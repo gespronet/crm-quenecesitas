@@ -3,7 +3,7 @@ import { supabase } from './utils/supabase';
 
 const BREVO_API_KEY = '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';
 const PARTNER_EMAIL = 'piandorenergia@corporacionlexgal.com';
-const FROM_EMAIL = 'arey@quenecesitashoy.es';
+
 const BRAND = '#002292';
 
 const fileToBase64 = (file) => new Promise((res, rej) => {
