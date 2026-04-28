@@ -9,7 +9,7 @@ const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
 
 const LINEAS = {
-  alarmas:      { label: "🔐 Alarmas / ADT",        color: "#dc2626", light: "#fef2f2" },
+  alarmas:      { label: "🔐 Alarmas",               color: "#dc2626", light: "#fef2f2" },
   energia:      { label: "⚡ Energía / Telefonía",  color: "#d97706", light: "#fffbeb" },
   inmobiliaria: { label: "🏠 Inmobiliaria",          color: "#059669", light: "#ecfdf5" },
   subastas:     { label: "⚖️ Subastas Judiciales",  color: "#7c3aed", light: "#f5f3ff" },

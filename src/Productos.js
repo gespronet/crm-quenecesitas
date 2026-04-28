@@ -10,7 +10,7 @@ const e2     = n => (Math.round((+n) * 100) / 100).toFixed(2);
 const fmtE   = (n, suffix = "") => `${e2(n)} €${suffix}`;
 
 const CATS = {
-  alarmas:  { label:"🔐 Alarmas ADT",        cat:"Alarmas ADT", color:"#dc2626", light:"#fef2f2" },
+  alarmas:  { label:"🔐 Alarmas",             cat:"Alarmas",     color:"#dc2626", light:"#fef2f2" },
   energia:  { label:"⚡ Energía / Luz y gas", cat:"Energía",     color:"#d97706", light:"#fffbeb" },
   telefonia:{ label:"📱 Telefonía móvil",     cat:"Telefonía",   color:"#7c3aed", light:"#f5f3ff" },
 };
