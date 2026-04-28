@@ -892,7 +892,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             {contact.tipo==="prospecto"&&onToClient&&(
               <button className="btn-p" style={{fontSize:12,background:"#059669"}} onClick={()=>{setSelectedDealId(contactDeals[0]?.id||"");setShowConvert(true);}}>⭐ Convertir a cliente</button>
             )}
-            {(contactLineas.includes("subastas")||["admin","socio"].includes(user.role))&&(
+            {contactLineas.includes("subastas")&&(
               <button className="btn-p" style={{fontSize:11,background:"#7c3aed",opacity:generating?0.6:1}} onClick={generateAcuerdo} disabled={generating}>{generating?"Generando...":"📄 Acuerdo confidencialidad"}</button>
             )}
             {contact.email&&<button className="btn-g" style={{fontSize:12}} onClick={()=>{setEmailForm({asunto:"",mensaje:""});setEmailAttachments([]);setShowEmail(true);}}>✉️ Enviar email</button>}
