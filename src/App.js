@@ -3,6 +3,7 @@ import logo from "./Que Necesitas - Logo para web y Favicon.png";
 import { supabase } from "./utils/supabase";
 import Productos, { ContactQuotes } from "./Productos";
 import Subastas from "./Subastas";
+import EnergiaSection from "./EnergiaSection";
 
 const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
@@ -889,7 +890,13 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
 
         {/* Tabs */}
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-          {[["historial","📋 Historial"],["documentos","📎 Documentos"],["presupuestos","💰 Presupuestos"],["acciones","🎯 Próximas acciones"]].map(([t,l])=>(
+          {[
+            ["historial","📋 Historial"],
+            ["documentos","📎 Documentos"],
+            ["presupuestos","💰 Presupuestos"],
+            ["acciones","🎯 Próximas acciones"],
+            ...(contact.linea==="energia"?[["energia","⚡ Energía"]]:[]),
+          ].map(([t,l])=>(
             <button key={t} className={`tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{l}</button>
           ))}
         </div>
@@ -946,6 +953,9 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
               <p style={{fontSize:12,color:"#6b7280"}}>💡 Usa el módulo de <strong>Tareas</strong> para crear recordatorios con fecha específica vinculados a este contacto.</p>
             </div>
           </div>
+        )}
+        {tab==="energia"&&contact.linea==="energia"&&(
+          <EnergiaSection contact={contact} user={user} users={users} />
         )}
 
         {/* Modal convertir a cliente */}
