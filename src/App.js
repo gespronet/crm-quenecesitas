@@ -9,15 +9,17 @@ const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
 
 const LINEAS = {
-  alarmas:      { label: "🔐 Alarmas",               color: "#dc2626", light: "#fef2f2" },
-  energia:      { label: "⚡ Energía / Telefonía",  color: "#d97706", light: "#fffbeb" },
-  inmobiliaria: { label: "🏠 Inmobiliaria",          color: "#059669", light: "#ecfdf5" },
-  subastas:     { label: "⚖️ Subastas Judiciales",  color: "#7c3aed", light: "#f5f3ff" },
+  alarmas:      { label: "🔐 Alarmas",              color: "#dc2626", light: "#fef2f2" },
+  energia:      { label: "⚡ Energía",              color: "#d97706", light: "#fffbeb" },
+  telefonia:    { label: "📱 Telefonía",            color: "#0ea5e9", light: "#f0f9ff" },
+  inmobiliaria: { label: "🏠 Inmobiliaria",         color: "#059669", light: "#ecfdf5" },
+  subastas:     { label: "⚖️ Subastas Judiciales", color: "#7c3aed", light: "#f5f3ff" },
 };
 
 const ETAPAS = {
   alarmas:      ["prospecto","contacto","visita","propuesta","contrato","instalado","perdido"],
   energia:      ["prospecto","análisis","propuesta","firmado","activo","perdido"],
+  telefonia:    ["prospecto","análisis","propuesta","firmado","activo","perdido"],
   inmobiliaria: ["captación","valoración","publicado","visita","oferta","cerrado","perdido"],
   subastas:     ["inversor","búsqueda","contacto_judicial","due_diligence","puja","adjudicado","perdido"],
 };
@@ -169,21 +171,24 @@ export default function App() {
       const newContact = rec ? toCamel(rec) : null;
       if (newContact) setData(d => ({ ...d, contacts: [...d.contacts, newContact] }));
 
-      // Auto-crear deal en etapa inicial para nuevos prospectos
-      if (form.tipo === 'prospecto' && form.linea) {
-        const dealPayload = toSnake({
-          id: genId(),
-          contactId: contactId,
-          linea: form.linea,
-          etapa: (ETAPAS[form.linea] || [])[0] || 'prospecto',
-          comercialId: form.comercialId,
-          titulo: form.name,
-          valor: 0,
-          updatedAt: today(),
-        });
-        const { data: dealRec, error: dealErr } = await supabase.from('deals').insert(dealPayload).select().single();
-        if (dealErr) console.error('[saveContact] auto-deal error:', dealErr);
-        else if (dealRec) setData(d => ({ ...d, deals: [...d.deals, toCamel(dealRec)] }));
+      // Auto-crear deal en etapa inicial para nuevos prospectos (uno por línea)
+      const lineas = Array.isArray(form.linea) ? form.linea : form.linea ? [form.linea] : [];
+      if (form.tipo === 'prospecto' && lineas.length > 0) {
+        for (const linea of lineas) {
+          const dealPayload = toSnake({
+            id: genId(),
+            contactId: contactId,
+            linea: linea,
+            etapa: (ETAPAS[linea] || [])[0] || 'prospecto',
+            comercialId: form.comercialId,
+            titulo: form.name,
+            valor: 0,
+            updatedAt: today(),
+          });
+          const { data: dealRec, error: dealErr } = await supabase.from('deals').insert(dealPayload).select().single();
+          if (dealErr) console.error('[saveContact] auto-deal error:', dealErr);
+          else if (dealRec) setData(d => ({ ...d, deals: [...d.deals, toCamel(dealRec)] }));
+        }
       }
     } else {
       const { error } = await supabase.from('contacts').update(toSnake(form)).eq('id', form.id);
@@ -309,7 +314,7 @@ export default function App() {
 
   const canSee = l => ["admin","socio"].includes(user.role) || user.lineaPermisos?.includes(l);
   const vis = (user.role==="admin"||user.role==="socio") ? data.users.map(u=>u.id) : [user.id];
-  const myCon = data.contacts.filter(c=>vis.includes(c.comercialId)&&canSee(c.linea));
+  const myCon = data.contacts.filter(c=>vis.includes(c.comercialId)&&(Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[]).some(l=>canSee(l)));
   const myDea = data.deals.filter(d=>vis.includes(d.comercialId)&&canSee(d.linea));
   const myTas = data.tasks.filter(t=>vis.includes(t.comercialId));
 
@@ -514,8 +519,11 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
   const [form,setForm]=useState({});
   const [detail,setDetail]=useState(null);
 
-  const filtered=contacts.filter(c=>(fLinea==="all"||c.linea===fLinea)&&(c.name.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search)||c.empresa?.toLowerCase().includes(search.toLowerCase())));
-  const openNew=()=>{const defaultLinea=Object.keys(LINEAS).find(k=>canSee(k))||"alarmas";setForm({linea:defaultLinea,tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
+  const filtered=contacts.filter(c=>{
+    const lineas=Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[];
+    return (fLinea==="all"||lineas.includes(fLinea))&&(c.name.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search)||c.empresa?.toLowerCase().includes(search.toLowerCase()));
+  });
+  const openNew=()=>{const defaultLinea=Object.keys(LINEAS).find(k=>canSee(k))||"alarmas";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
   const openEdit=c=>{setForm({...c});setModal("edit");};
   const save=async()=>{if(!form.name?.trim())return;await onSaveContact(form,modal==="new");setModal(null);};
   const del=id=>{if(window.confirm("¿Eliminar contacto?"))onDeleteContact(id);};
@@ -546,14 +554,15 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
               ))}
             </tr></thead>
             <tbody>{filtered.map(c=>{
-              const ln=LINEAS[c.linea]||{};
+              const lineas=Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[];
+              const ln0=LINEAS[lineas[0]]||{};
               const com=users.find(u=>u.id===c.comercialId);
               const ci=interactions.filter(i=>i.contactId===c.id);
               return (
                 <tr key={c.id} className="tr" style={{borderTop:"1px solid #f0f3fb"}}>
                   <td style={{padding:"9px 13px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:9}}>
-                      <div style={{width:32,height:32,background:ln.light,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:ln.color,fontSize:12,flexShrink:0}}>{c.name.charAt(0)}</div>
+                      <div style={{width:32,height:32,background:ln0.light||BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:ln0.color||BRAND,fontSize:12,flexShrink:0}}>{c.name.charAt(0)}</div>
                       <div>
                         <button onClick={()=>setDetail(c)} style={{fontSize:12,fontWeight:700,color:BRAND,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left"}}>{c.name}</button>
                         {["admin","socio"].includes(user.role)&&com&&<p style={{fontSize:10,color:"#9ca3af",marginTop:1}}>{com.name}</p>}
@@ -563,7 +572,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                   </td>
                   <td style={{padding:"9px 13px",fontSize:12,color:"#374151"}}>{c.empresa||"—"}</td>
                   <td style={{padding:"9px 13px",fontSize:12,color:"#374151"}}>{c.phone||"—"}</td>
-                  <td style={{padding:"9px 13px"}}><span className="tag" style={{background:ln.light,color:ln.color}}>{ln.label}</span></td>
+                  <td style={{padding:"9px 13px"}}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{lineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color}}>{lx.label}</span>;})}</div></td>
                   <td style={{padding:"9px 13px",fontSize:11,color:"#374151"}}>{com?.name||"—"}</td>
                   <td style={{padding:"9px 13px",fontSize:10,color:"#9ca3af"}}>{c.createdAt}</td>
                   <td style={{padding:"9px 13px"}}>
@@ -608,11 +617,17 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                   <option value="empresa">Empresa</option>
                 </select>
               </div>
-              {/* Línea — siempre visible */}
-              <div style={{gridColumn:"1 / -1"}}><label className="fl">Línea</label>
-                <select className="fi" value={form.linea||"alarmas"} onChange={e=>setForm(f=>({...f,linea:e.target.value}))}>
-                  {Object.entries(LINEAS).filter(([k])=>canSee(k)).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-                </select>
+              {/* Línea — checkboxes múltiples */}
+              <div style={{gridColumn:"1 / -1"}}>
+                <label className="fl">Línea(s)</label>
+                <div style={{display:"flex",gap:7,flexWrap:"wrap",marginTop:4}}>
+                  {Object.entries(LINEAS).filter(([k])=>canSee(k)).map(([k,v])=>{
+                    const sel=(Array.isArray(form.linea)?form.linea:[]).includes(k);
+                    return (
+                      <button key={k} type="button" onClick={()=>setForm(f=>{const cur=Array.isArray(f.linea)?f.linea:[];return {...f,linea:sel?cur.filter(x=>x!==k):[...cur,k]};})} style={{padding:"5px 12px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?v.color:"#dde2f0",background:sel?v.light:"white",color:sel?v.color:"#6b7280",transition:"all .2s"}}>{v.label}</button>
+                    );
+                  })}
+                </div>
               </div>
               {/* Campos particular */}
               {(form.tipo_cliente||"particular")==="particular"&&<>
@@ -666,7 +681,8 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
   const [emailForm,setEmailForm]=useState({asunto:"",mensaje:""});
   const [emailAttachments,setEmailAttachments]=useState([]);
   const [sendingEmail,setSendingEmail]=useState(false);
-  const ln=LINEAS[contact.linea]||{};
+  const contactLineas=Array.isArray(contact.linea)?contact.linea:contact.linea?[contact.linea]:[];
+  const ln=LINEAS[contactLineas[0]]||{};
   const com=users.find(u=>u.id===contact.comercialId);
   const contactDeals=(deals||[]).filter(d=>d.contactId===contact.id&&d.etapa!=="perdido");
 
@@ -866,7 +882,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             <div>
               <h2 style={{fontSize:18,fontWeight:800,color:BRAND}}>{contact.name}</h2>
               <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
-                <span className="tag" style={{background:ln.light,color:ln.color}}>{ln.label}</span>
+                {contactLineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color}}>{lx.label}</span>;})}
                 <span className="tag" style={{background:contact.tipo==="cliente"?"#d1fae5":"#eff6ff",color:contact.tipo==="cliente"?"#059669":"#2563eb"}}>{contact.tipo==="cliente"?"⭐ Cliente":"👤 Prospecto"}</span>
                 {contact.empresa&&<span style={{fontSize:11,color:"#6b7280"}}>🏢 {contact.empresa}</span>}
               </div>
@@ -876,7 +892,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             {contact.tipo==="prospecto"&&onToClient&&(
               <button className="btn-p" style={{fontSize:12,background:"#059669"}} onClick={()=>{setSelectedDealId(contactDeals[0]?.id||"");setShowConvert(true);}}>⭐ Convertir a cliente</button>
             )}
-            {(contact.linea==="subastas"||["admin","socio"].includes(user.role))&&(
+            {(contactLineas.includes("subastas")||["admin","socio"].includes(user.role))&&(
               <button className="btn-p" style={{fontSize:11,background:"#7c3aed",opacity:generating?0.6:1}} onClick={generateAcuerdo} disabled={generating}>{generating?"Generando...":"📄 Acuerdo confidencialidad"}</button>
             )}
             {contact.email&&<button className="btn-g" style={{fontSize:12}} onClick={()=>{setEmailForm({asunto:"",mensaje:""});setEmailAttachments([]);setShowEmail(true);}}>✉️ Enviar email</button>}
@@ -900,7 +916,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             ["documentos","📎 Documentos"],
             ["presupuestos","💰 Presupuestos"],
             ["acciones","🎯 Próximas acciones"],
-            ...(contact.linea==="energia"?[["energia","⚡ Energía"]]:[]),
+            ...(contactLineas.includes("energia")?[["energia","⚡ Energía"]]:[]),
           ].map(([t,l])=>(
             <button key={t} className={`tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{l}</button>
           ))}
@@ -959,7 +975,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             </div>
           </div>
         )}
-        {tab==="energia"&&contact.linea==="energia"&&(
+        {tab==="energia"&&contactLineas.includes("energia")&&(
           <EnergiaSection contact={contact} user={user} users={users} />
         )}
 
