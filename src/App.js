@@ -662,6 +662,10 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
   const [selectedDealId,setSelectedDealId]=useState("");
   const [docRefreshKey,setDocRefreshKey]=useState(0);
   const [generating,setGenerating]=useState(false);
+  const [showEmail,setShowEmail]=useState(false);
+  const [emailForm,setEmailForm]=useState({asunto:"",mensaje:""});
+  const [emailAttachments,setEmailAttachments]=useState([]);
+  const [sendingEmail,setSendingEmail]=useState(false);
   const ln=LINEAS[contact.linea]||{};
   const com=users.find(u=>u.id===contact.comercialId);
   const contactDeals=(deals||[]).filter(d=>d.contactId===contact.id&&d.etapa!=="perdido");
@@ -875,6 +879,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             {(contact.linea==="subastas"||["admin","socio"].includes(user.role))&&(
               <button className="btn-p" style={{fontSize:11,background:"#7c3aed",opacity:generating?0.6:1}} onClick={generateAcuerdo} disabled={generating}>{generating?"Generando...":"📄 Acuerdo confidencialidad"}</button>
             )}
+            {contact.email&&<button className="btn-g" style={{fontSize:12}} onClick={()=>{setEmailForm({asunto:"",mensaje:""});setEmailAttachments([]);setShowEmail(true);}}>✉️ Enviar email</button>}
             <button className="btn-g" style={{fontSize:12}} onClick={onEdit}>✏️ Editar</button>
             <button className="btn-g" style={{fontSize:12}} onClick={onClose}>✕</button>
           </div>
@@ -956,6 +961,92 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
         )}
         {tab==="energia"&&contact.linea==="energia"&&(
           <EnergiaSection contact={contact} user={user} users={users} />
+        )}
+
+        {/* Modal enviar email */}
+        {showEmail&&(
+          <div className="mb" onClick={e=>e.target===e.currentTarget&&setShowEmail(false)}>
+            <div className="mo" style={{maxWidth:500}}>
+              <h2 style={{fontSize:16,fontWeight:800,color:BRAND,marginBottom:16}}>✉️ Enviar email</h2>
+              <div style={{marginBottom:10}}>
+                <label className="fl">Para</label>
+                <input className="fi" value={contact.email} readOnly style={{background:"#f8f9fd",color:"#6b7280"}} />
+              </div>
+              <div style={{marginBottom:10}}>
+                <label className="fl">Asunto</label>
+                <input className="fi" value={emailForm.asunto} onChange={e=>setEmailForm(f=>({...f,asunto:e.target.value}))} placeholder="Escribe el asunto..." />
+              </div>
+              <div style={{marginBottom:14}}>
+                <label className="fl">Mensaje</label>
+                <textarea className="fi" rows={6} value={emailForm.mensaje} onChange={e=>setEmailForm(f=>({...f,mensaje:e.target.value}))} placeholder="Escribe el mensaje..." style={{resize:"vertical"}} />
+              </div>
+              {/* Adjuntos */}
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:emailAttachments.length>0?8:0}}>
+                  <label className="fl" style={{margin:0}}>Adjuntos</label>
+                  <label style={{cursor:"pointer"}}>
+                    <span className="btn-g" style={{fontSize:11,padding:"4px 10px",display:"inline-block"}}>+ Adjuntar archivo</span>
+                    <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp" style={{display:"none"}} onChange={e=>{
+                      const files=Array.from(e.target.files);
+                      setEmailAttachments(a=>[...a,...files.filter(f=>!a.find(x=>x.name===f.name&&x.size===f.size))]);
+                      e.target.value='';
+                    }} />
+                  </label>
+                </div>
+                {emailAttachments.length>0&&(
+                  <div style={{background:"#f8f9fd",borderRadius:8,padding:"8px 10px"}}>
+                    {emailAttachments.map((f,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<emailAttachments.length-1?"1px solid #e8ecf8":"none"}}>
+                        <span style={{fontSize:14}}>📎</span>
+                        <span style={{flex:1,fontSize:11,color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                        <span style={{fontSize:10,color:"#9ca3af",flexShrink:0}}>{(f.size/1024).toFixed(0)} KB</span>
+                        <button onClick={()=>setEmailAttachments(a=>a.filter((_,j)=>j!==i))} style={{background:"none",border:"none",fontSize:13,cursor:"pointer",color:"#fca5a5",flexShrink:0}}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn-g" onClick={()=>setShowEmail(false)}>Cancelar</button>
+                <button className="btn-p" disabled={sendingEmail||!emailForm.asunto.trim()||!emailForm.mensaje.trim()} style={{opacity:sendingEmail?0.6:1}} onClick={async()=>{
+                  setSendingEmail(true);
+                  try{
+                    // Convertir adjuntos a base64
+                    const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+                    const attachmentPayload=await Promise.all(emailAttachments.map(async f=>({content:await toB64(f),name:f.name})));
+                    const payload={
+                      sender:{name:user.name,email:user.email},
+                      to:[{email:contact.email,name:contact.name}],
+                      subject:emailForm.asunto,
+                      textContent:emailForm.mensaje,
+                    };
+                    if(attachmentPayload.length>0) payload.attachment=attachmentPayload;
+                    const res=await fetch('https://api.brevo.com/v3/smtp/email',{
+                      method:'POST',
+                      headers:{accept:'application/json','api-key':'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','content-type':'application/json'},
+                      body:JSON.stringify(payload),
+                    });
+                    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(JSON.stringify(e));}
+                    const adjuntosStr=emailAttachments.length>0?` | Adjuntos: ${emailAttachments.map(f=>f.name).join(', ')}`:'';
+                    await supabase.from('interactions').insert({
+                      id:genId(),
+                      contact_id:contact.id,
+                      tipo:'email',
+                      fecha:today(),
+                      descripcion:`Asunto: ${emailForm.asunto}${adjuntosStr} | ${emailForm.mensaje}`,
+                      comercial_id:user.id,
+                    });
+                    setShowEmail(false);
+                    alert('Email enviado correctamente');
+                  }catch(e){
+                    alert(`Error al enviar: ${e.message}`);
+                  }finally{
+                    setSendingEmail(false);
+                  }
+                }}>{sendingEmail?'Enviando...':'Enviar'}</button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Modal convertir a cliente */}
