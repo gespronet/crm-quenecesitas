@@ -4,6 +4,8 @@ import { supabase } from "./utils/supabase";
 import Productos, { ContactQuotes } from "./Productos";
 import Subastas from "./Subastas";
 import EnergiaSection from "./EnergiaSection";
+import AlarmaSection from "./AlarmaSection";
+import Inmobiliaria from "./Inmobiliaria";
 
 const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
@@ -326,6 +328,7 @@ export default function App() {
     {id:"tasks",icon:"✅",label:"Tareas"},
     {id:"productos",icon:"📦",label:"Productos"},
     ...(canSee("subastas")?[{id:"subastas",icon:"⚖️",label:"Subastas"}]:[]),
+    ...(canSee("inmobiliaria")?[{id:"inmobiliaria",icon:"🏠",label:"Inmobiliaria"}]:[]),
     ...(["admin","socio"].includes(user.role)?[{id:"team",icon:"👔",label:"Equipo"}]:[]),
   ];
 
@@ -408,6 +411,7 @@ export default function App() {
           />}
           {view==="productos" && <Productos user={user} contacts={data.contacts} />}
           {view==="subastas"  && <Subastas user={user} contacts={data.contacts} users={data.users} />}
+          {view==="inmobiliaria" && <Inmobiliaria user={user} contacts={data.contacts} users={data.users} />}
           {view==="team"      && <Team
             users={data.users}
             contacts={data.contacts}
@@ -916,6 +920,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             ["documentos","📎 Documentos"],
             ["presupuestos","💰 Presupuestos"],
             ["acciones","🎯 Próximas acciones"],
+            ...(contactLineas.includes("alarmas")?[["alarmas","🔐 Alarmas"]]:[]),
             ...(contactLineas.includes("energia")?[["energia","⚡ Energía"]]:[]),
           ].map(([t,l])=>(
             <button key={t} className={`tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{l}</button>
@@ -974,6 +979,9 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
               <p style={{fontSize:12,color:"#6b7280"}}>💡 Usa el módulo de <strong>Tareas</strong> para crear recordatorios con fecha específica vinculados a este contacto.</p>
             </div>
           </div>
+        )}
+        {tab==="alarmas"&&contactLineas.includes("alarmas")&&(
+          <AlarmaSection contact={contact} user={user} />
         )}
         {tab==="energia"&&contactLineas.includes("energia")&&(
           <EnergiaSection contact={contact} user={user} users={users} />
