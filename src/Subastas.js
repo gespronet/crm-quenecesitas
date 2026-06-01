@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "./utils/supabase";
+import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase";
 
 const BRAND = "#002292";
 function genId() { return crypto.randomUUID(); }
@@ -385,8 +385,9 @@ function AuctionDocuments({ auctionId, user }) {
     const file=e.target.files[0]; if(!file)return;
     if(file.size>20*1024*1024){alert('Máximo 20MB por archivo');return;}
     setUploading(true);
-    const path=`auctions/${auctionId}/${Date.now()}_${file.name}`;
-    const {error:upErr}=await supabase.storage.from('documentos').upload(path,file);
+    const compressedFile = await compressFileIfPdf(file);
+    const path=`auctions/${auctionId}/${Date.now()}_${sanitizeFileName(file.name)}`;
+    const {error:upErr}=await supabase.storage.from('documentos').upload(path,compressedFile);
     if(upErr){alert(`Error al subir: ${upErr.message}`);setUploading(false);return;}
     const rec={id:genId(),auction_id:auctionId,nombre:file.name,tipo:tipoSel,url:path,size:file.size,uploaded_by:user.id,created_at:today()};
     console.log('[AuctionDocs] INSERT:', rec);

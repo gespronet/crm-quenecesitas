@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import logo from "./Que Necesitas - Logo para web y Favicon.png";
-import { supabase } from "./utils/supabase";
+import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase";
 import Productos, { ContactQuotes } from "./Productos";
 import Subastas from "./Subastas";
 import EnergiaSection from "./EnergiaSection";
@@ -114,11 +114,100 @@ const CSS = `
   .mo{background:white;border-radius:18px;padding:24px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;}
   .mo-lg{max-width:780px;}
   .tr:hover{background:#f8f9fd;}
-  .tab{padding:6px 14px;border-radius:7px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.4px;}
+  .tab{padding:6px 14px;border-radius:7px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
   .tab.on{background:#002292;color:white;}
   .tab:not(.on){background:#f0f3fc;color:#6b7280;}
   .ii{border-left:3px solid #002292;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:8px;background:white;}
   .sc{background:white;border-radius:14px;padding:18px;border-left:4px solid;}
+
+  /* ══ RESPONSIVE ══════════════════════════════════════════════════════════
+     Mobile < 768px  |  Tablet 768-1023px  |  Desktop ≥ 1024px
+  ══════════════════════════════════════════════════════════════════════════ */
+
+  /* Elementos base (estado inicial para desktop) */
+  .mob-header{display:none;position:sticky;top:0;z-index:200;background:white;border-bottom:1px solid #e8ecf8;padding:11px 16px;align-items:center;gap:12px;flex-shrink:0;}
+  .crm-sidebar{transition:transform .25s,width .3s;}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:298;cursor:pointer;}
+  .sidebar-label{transition:opacity .2s;}
+  .contact-cards{display:none;}
+  .contact-table{display:block;}
+  .kanban-mob-sel{display:none;margin-bottom:14px;gap:10px;align-items:center;}
+  .kanban-full{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;}
+  .kanban-mob-col{display:none;}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+
+  /* ── Móvil (< 768px) ──────────────────────────────────────────────── */
+  @media(max-width:767px){
+    .crm-root{flex-direction:column;overflow:hidden;}
+    .crm-sidebar{position:fixed!important;top:0!important;left:0!important;height:100dvh!important;width:240px!important;z-index:299!important;transform:translateX(-100%);overflow-y:auto;overflow-x:hidden;}
+    .crm-sidebar.mob-open{transform:translateX(0)!important;box-shadow:6px 0 32px rgba(0,35,146,.25)!important;}
+    .sidebar-overlay.mob-open{display:block!important;}
+    .mob-header{display:flex!important;}
+    .crm-main{flex:1;overflow:auto;display:flex;flex-direction:column;}
+    .crm-main-inner{padding:14px 14px 80px!important;}
+    .desk-hamburger{display:none!important;}
+
+    /* Contactos: tarjetas en lugar de tabla */
+    .contact-table{display:none!important;}
+    .contact-cards{display:flex!important;flex-direction:column;gap:10px;}
+
+    /* Modales → bottom-sheet */
+    .mb{padding:0!important;align-items:flex-end!important;}
+    .mo{border-radius:18px 18px 0 0!important;max-width:100%!important;width:100%!important;max-height:93dvh!important;padding:20px 16px 28px!important;}
+    .mo-lg{max-width:100%!important;}
+
+    /* Tabs → scroll horizontal */
+    .tabs-scroll{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;gap:6px!important;}
+    .tabs-scroll::-webkit-scrollbar{display:none;}
+    .tabs-scroll .tab{flex-shrink:0!important;}
+
+    /* Dashboard métricas: 2×2 */
+    .stats-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
+
+    /* Pipeline kanban → selector de columna */
+    .kanban-mob-sel{display:flex!important;}
+    .kanban-full{display:none!important;}
+    .kanban-mob-col{display:block!important;width:100%;}
+
+    /* Botones táctiles */
+    .btn-p{min-height:44px;padding:10px 18px!important;font-size:14px!important;}
+    .btn-g{min-height:40px;}
+
+    /* Prevenir zoom en iOS al enfocar inputs */
+    .fi{font-size:16px!important;}
+    input.fi,select.fi,textarea.fi{font-size:16px!important;}
+
+    /* ContactDetail: acciones en columna */
+    .cd-actions{flex-wrap:wrap!important;justify-content:stretch!important;}
+    .cd-actions .btn-p,.cd-actions .btn-g{flex:1!important;min-width:120px;justify-content:center;display:flex;align-items:center;gap:5px;}
+
+    /* Formulario: columna única */
+    .form-grid{grid-template-columns:1fr!important;}
+    .form-gcol2{grid-column:span 1!important;}
+
+    /* Ficha info grid */
+    .info-grid{grid-template-columns:1fr 1fr!important;}
+  }
+
+  /* ── Tablet (768px – 1023px) ─────────────────────────────────────── */
+  @media(min-width:768px) and (max-width:1023px){
+    .crm-sidebar{width:64px!important;overflow:hidden!important;}
+    .sidebar-label{display:none!important;}
+    .sidebar-logo-text{display:none!important;}
+    .crm-main-inner{padding:16px 18px!important;}
+    /* Contactos: grid 2 col */
+    .contact-table{display:none!important;}
+    .contact-cards{display:grid!important;grid-template-columns:1fr 1fr;gap:12px!important;}
+    .stats-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
+    .kc{flex:0 0 190px!important;}
+  }
+
+  /* ── Desktop (≥ 1024px) ──────────────────────────────────────────── */
+  @media(min-width:1024px){
+    .mob-header{display:none!important;}
+    .kanban-mob-sel{display:none!important;}
+    .kanban-full{display:flex!important;}
+  }
 `;
 
 function LoadingScreen() {
@@ -139,7 +228,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("dashboard");
   const [sidebar, setSidebar] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const navigate = (id) => { setView(id); setMenuOpen(false); };
 
   useEffect(() => { loadAll(); }, []);
 
@@ -153,6 +245,7 @@ export default function App() {
       supabase.from('tasks').select('*'),
     ]);
     const deals = (d.data || []).map(toCamel);
+    console.log('[loadAll] contacts sample linea:', c.data?.[0]?.linea, '| type:', typeof c.data?.[0]?.linea);
     setData({
       users:        (u.data || []).map(toCamel),
       contacts:     (c.data || []).map(toCamel),
@@ -165,12 +258,16 @@ export default function App() {
 
   // ── Contacts ─────────────────────────────────────────────────────────────
   const saveContact = async (form, isNew) => {
+    // Asegurar que linea es siempre un array antes de guardar
+    const normalizedForm = { ...form, linea: Array.isArray(form.linea) ? form.linea : form.linea ? [form.linea] : [] };
     if (isNew) {
       const contactId = genId();
-      const payload = toSnake({ ...form, id: contactId, createdAt: today() });
+      const payload = toSnake({ ...normalizedForm, id: contactId, createdAt: today() });
+      console.log('[saveContact:new] linea enviado→', payload.linea, '| type:', typeof payload.linea);
       const { data: rec, error } = await supabase.from('contacts').insert(payload).select().single();
       if (error) { console.error('[saveContact]', error); alert(`Error al guardar contacto:\n${error.message}`); return; }
       const newContact = rec ? toCamel(rec) : null;
+      console.log('[saveContact:new] linea guardado en Supabase→', newContact?.linea);
       if (newContact) setData(d => ({ ...d, contacts: [...d.contacts, newContact] }));
 
       // Auto-crear deal en etapa inicial para nuevos prospectos (uno por línea)
@@ -193,9 +290,13 @@ export default function App() {
         }
       }
     } else {
-      const { error } = await supabase.from('contacts').update(toSnake(form)).eq('id', form.id);
+      const updatePayload = toSnake(normalizedForm);
+      console.log('[saveContact:edit] linea enviado→', updatePayload.linea, '| type:', typeof updatePayload.linea);
+      const { data: rec, error } = await supabase.from('contacts').update(updatePayload).eq('id', normalizedForm.id).select().single();
       if (error) { console.error('[saveContact update]', error); alert(`Error al actualizar:\n${error.message}`); return; }
-      setData(d => ({ ...d, contacts: d.contacts.map(c => c.id === form.id ? form : c) }));
+      const updated = rec ? toCamel(rec) : normalizedForm;
+      console.log('[saveContact:edit] linea guardado en Supabase→', updated.linea);
+      setData(d => ({ ...d, contacts: d.contacts.map(c => c.id === normalizedForm.id ? updated : c) }));
     }
   };
   const deleteContact = async (id) => {
@@ -332,36 +433,53 @@ export default function App() {
     ...(["admin","socio"].includes(user.role)?[{id:"team",icon:"👔",label:"Equipo"}]:[]),
   ];
 
+  const currentNavLabel = navItems.find(i=>i.id===view)?.label || "CRM";
+
   return (
     <div className="crm-root">
       <style>{CSS}</style>
+
+      {/* Overlay móvil (cierra el menú al tocar fuera) */}
+      <div className={`sidebar-overlay ${menuOpen?"mob-open":""}`} onClick={()=>setMenuOpen(false)} />
+
       {/* Sidebar */}
-      <div style={{width:sidebar?216:56,background:"white",borderRight:"1px solid #e8ecf8",padding:"14px 8px",display:"flex",flexDirection:"column",transition:"width .3s",overflow:"hidden",flexShrink:0}}>
+      <div className={`crm-sidebar ${menuOpen?"mob-open":""}`}
+        style={{width:sidebar?216:56,background:"white",borderRight:"1px solid #e8ecf8",padding:"14px 8px",display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:22,padding:"0 4px"}}>
           <img src={logo} style={{width:36,height:36,borderRadius:10,flexShrink:0,objectFit:"cover"}} alt="logo" />
-          {sidebar && <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:17,color:"#002292",whiteSpace:"nowrap"}}>queNECESITAS</span>}
+          <span className="sidebar-logo-text sidebar-label" style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:17,color:"#002292",whiteSpace:"nowrap",display:sidebar?"inline":"none"}}>queNECESITAS</span>
         </div>
         {navItems.map(item=>(
-          <button key={item.id} className={`nav ${view===item.id?"on":""}`} onClick={()=>setView(item.id)}>
+          <button key={item.id} className={`nav ${view===item.id?"on":""}`} onClick={()=>navigate(item.id)}>
             <span style={{fontSize:16,flexShrink:0}}>{item.icon}</span>
-            {sidebar&&<span style={{whiteSpace:"nowrap"}}>{item.label}</span>}
+            <span className="sidebar-label" style={{whiteSpace:"nowrap",display:sidebar?"inline":"none"}}>{item.label}</span>
           </button>
         ))}
         <div style={{marginTop:"auto"}}>
           <div style={{borderTop:"1px solid #e8ecf8",paddingTop:10,display:"flex",alignItems:"center",gap:8}}>
             <div style={{width:32,height:32,background:BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:BRAND,fontSize:13,flexShrink:0}}>{user.name.charAt(0)}</div>
-            {sidebar&&<div style={{overflow:"hidden"}}><div style={{fontSize:12,fontWeight:700,color:BRAND,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name}</div><div style={{fontSize:10,color:"#9ca3af",textTransform:"capitalize"}}>{user.role}</div></div>}
+            <span className="sidebar-label" style={{display:sidebar?"block":"none",overflow:"hidden"}}>
+              <div style={{fontSize:12,fontWeight:700,color:BRAND,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name}</div>
+              <div style={{fontSize:10,color:"#9ca3af",textTransform:"capitalize"}}>{user.role}</div>
+            </span>
           </div>
-          <button className="nav" onClick={()=>setUser(null)} style={{marginTop:4,color:"#dc2626"}}>
-            <span>🚪</span>{sidebar&&<span>Salir</span>}
+          <button className="nav" onClick={()=>{setUser(null);setMenuOpen(false);}} style={{marginTop:4,color:"#dc2626"}}>
+            <span>🚪</span><span className="sidebar-label" style={{display:sidebar?"inline":"none"}}>Salir</span>
           </button>
         </div>
       </div>
 
       {/* Main */}
-      <div style={{flex:1,overflow:"auto"}}>
-        <div style={{padding:"16px 20px"}}>
-          <button onClick={()=>setSidebar(s=>!s)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",marginBottom:12,color:"#9ca3af"}}>☰</button>
+      <div className="crm-main" style={{flex:1,overflow:"auto"}}>
+        {/* Cabecera móvil */}
+        <div className="mob-header">
+          <button onClick={()=>setMenuOpen(m=>!m)} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:BRAND,padding:"4px",lineHeight:1,flexShrink:0}}>☰</button>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:17,color:BRAND,flex:1}}>{currentNavLabel}</span>
+          <div style={{width:32,height:32,background:BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:BRAND,fontSize:13}}>{user.name.charAt(0)}</div>
+        </div>
+
+        <div className="crm-main-inner" style={{padding:"16px 20px"}}>
+          <button className="desk-hamburger" onClick={()=>setSidebar(s=>!s)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",marginBottom:12,color:"#9ca3af"}}>☰</button>
           {view==="dashboard" && <Dashboard contacts={myCon} deals={myDea} tasks={myTas} user={user} />}
           {view==="contacts"  && <Contacts
             contacts={myCon.filter(c=>c.tipo==="prospecto")}
@@ -466,7 +584,7 @@ function Dashboard({contacts,deals,tasks,user}) {
         <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:BRAND}}>Dashboard</h1>
         <p style={{color:"#9ca3af",fontSize:13}}>Bienvenido, {user.name} · {new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}</p>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}}>
+      <div className="stats-grid">
         {[
           {l:"Prospectos",v:contacts.filter(c=>c.tipo==="prospecto").length,i:"👥",c:BRAND},
           {l:"Clientes",v:contacts.filter(c=>c.tipo==="cliente").length,i:"🌟",c:"#059669"},
@@ -528,7 +646,11 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
     return (fLinea==="all"||lineas.includes(fLinea))&&(c.name.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search)||c.empresa?.toLowerCase().includes(search.toLowerCase()));
   });
   const openNew=()=>{const defaultLinea=Object.keys(LINEAS).find(k=>canSee(k))||"alarmas";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
-  const openEdit=c=>{setForm({...c});setModal("edit");};
+  const openEdit=c=>{
+    console.log('[openEdit] contact.linea:', c.linea, '| type:', typeof c.linea);
+    setForm({...c, linea: Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[]});
+    setModal("edit");
+  };
   const save=async()=>{if(!form.name?.trim())return;await onSaveContact(form,modal==="new");setModal(null);};
   const del=id=>{if(window.confirm("¿Eliminar contacto?"))onDeleteContact(id);};
   const toClient=c=>onToClient(c);
@@ -549,7 +671,8 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
           {Object.entries(LINEAS).filter(([k])=>canSee(k)).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
-      <div className="card" style={{overflow:"hidden"}}>
+      {/* Vista tabla — escritorio */}
+      <div className="contact-table card" style={{overflow:"hidden"}}>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#f8f9fd"}}>
@@ -593,6 +716,43 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
           </table>
           {filtered.length===0&&<p style={{textAlign:"center",padding:36,color:"#9ca3af"}}>Sin registros</p>}
         </div>
+      </div>
+
+      {/* Vista tarjetas — móvil y tablet */}
+      <div className="contact-cards">
+        {filtered.length===0&&<p style={{textAlign:"center",padding:36,color:"#9ca3af"}}>Sin registros</p>}
+        {filtered.map(c=>{
+          const lineas=Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[];
+          const ln0=LINEAS[lineas[0]]||{};
+          const com=users.find(u=>u.id===c.comercialId);
+          const ci=interactions.filter(i=>i.contactId===c.id);
+          return (
+            <div key={c.id} className="card" style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <div style={{width:42,height:42,background:ln0.light||BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:ln0.color||BRAND,fontSize:16,flexShrink:0}}>{c.name.charAt(0)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <button onClick={()=>setDetail(c)} style={{fontSize:15,fontWeight:800,color:BRAND,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{c.name}</button>
+                  {c.empresa&&<p style={{fontSize:11,color:"#6b7280",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.empresa}</p>}
+                  {com&&["admin","socio"].includes(user.role)&&<p style={{fontSize:10,color:"#9ca3af"}}>{com.name}</p>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end",flexShrink:0}}>
+                  {lineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color,fontSize:9}}>{lx.label}</span>;})}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap"}}>
+                {c.phone&&<a href={`tel:${c.phone}`} style={{fontSize:13,color:"#374151",textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>📞 {c.phone}</a>}
+                {c.email&&<a href={`mailto:${c.email}`} style={{fontSize:13,color:"#374151",textDecoration:"none",display:"flex",alignItems:"center",gap:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>✉️ {c.email}</a>}
+                {ci.length>0&&<span style={{fontSize:11,color:BRAND}}>📋 {ci.length} actuaciones</span>}
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button className="btn-p" style={{flex:1,minWidth:100,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>setDetail(c)}>📋 Ver ficha</button>
+                <button className="btn-g" style={{flex:1,minWidth:80,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>openEdit(c)}>✏️ Editar</button>
+                {!isClients&&<button className="btn-g" style={{fontSize:12,color:"#059669",borderColor:"#a7f3d0",padding:"10px 12px"}} onClick={()=>toClient(c)}>→ Cliente</button>}
+                <button className="btn-g" style={{fontSize:12,color:"#dc2626",borderColor:"#fecaca",padding:"10px 12px"}} onClick={()=>del(c.id)}>🗑️</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {detail&&<ContactDetail
@@ -914,7 +1074,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
         {contact.notas&&<div style={{background:"#fffbeb",borderRadius:8,padding:11,marginBottom:16,fontSize:12,color:"#92400e",borderLeft:"3px solid #fbbf24"}}>📝 {contact.notas}</div>}
 
         {/* Tabs */}
-        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        <div className="tabs-scroll" style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
           {[
             ["historial","📋 Historial"],
             ["documentos","📎 Documentos"],
@@ -1114,8 +1274,9 @@ function DocumentsSection({contactId,user,refreshKey=0}) {
     const file=e.target.files[0]; if(!file)return;
     if(file.size>10*1024*1024){alert('Máximo 10MB por archivo');return;}
     setUploading(true);
-    const path=`${contactId}/${Date.now()}_${file.name}`;
-    const {error:upErr}=await supabase.storage.from('documentos').upload(path,file);
+    const compressedFile = await compressFileIfPdf(file);
+    const path=`${contactId}/${Date.now()}_${sanitizeFileName(file.name)}`;
+    const {error:upErr}=await supabase.storage.from('documentos').upload(path,compressedFile);
     if(upErr){alert(`Error al subir: ${upErr.message}`);setUploading(false);return;}
     const tipo=file.name.split('.').pop().toLowerCase();
     const rec={id:genId(),contact_id:contactId,uploaded_by:user.id,nombre:file.name,tipo,url:path,created_at:today()};
@@ -1173,9 +1334,11 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
   const [drag,setDrag]=useState(null);
+  const [mobEtapa,setMobEtapa]=useState("");
 
   const etapas=ETAPAS[al]||[];
   const lDe=deals.filter(d=>d.linea===al);
+  const activeMobEtapa=mobEtapa&&etapas.includes(mobEtapa)?mobEtapa:(etapas[0]||"");
   const openNew=()=>{setForm({linea:al,etapa:etapas[0],comercialId:user.id,valor:""});setModal("new");};
   const save=async()=>{if(!form.titulo?.trim())return;await onSaveDeal(form,modal==="new");setModal(null);};
   const del=id=>{if(window.confirm("¿Eliminar?"))onDeleteDeal(id);};
@@ -1197,7 +1360,60 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
           </button>
         ))}
       </div>
-      <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:10}}>
+      {/* Selector de etapa en móvil */}
+      <div className="kanban-mob-sel">
+        <label style={{fontSize:12,fontWeight:700,color:"#6b7280",flexShrink:0}}>Etapa:</label>
+        <select className="fi" value={activeMobEtapa} onChange={e=>setMobEtapa(e.target.value)}>
+          {etapas.map(e=><option key={e} value={e}>{ETAPA_LABELS[e]||e} ({lDe.filter(d=>d.etapa===e).length})</option>)}
+        </select>
+      </div>
+
+      {/* Columna única en móvil */}
+      <div className="kanban-mob-col">
+        {(()=>{
+          const etapa=activeMobEtapa;
+          const ed=lDe.filter(d=>d.etapa===etapa);
+          const ev=ed.reduce((s,d)=>s+(d.valor||0),0);
+          const ip=etapa==="perdido";
+          return (
+            <div className="kc" style={{width:"100%",maxWidth:"100%"}}>
+              <div style={{marginBottom:9,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:11,fontWeight:800,color:ip?"#dc2626":BRAND,textTransform:"uppercase",letterSpacing:".5px"}}>{ETAPA_LABELS[etapa]||etapa}</span>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  {ev>0&&<span style={{fontSize:11,color:"#9ca3af"}}>€{ev.toLocaleString("es-ES")}</span>}
+                  <span style={{background:ip?"#fee2e2":BRAND_LIGHT,color:ip?"#dc2626":BRAND,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:20}}>{ed.length}</span>
+                </div>
+              </div>
+              {ed.map(deal=>{
+                const c=contacts.find(c=>c.id===deal.contactId);
+                const ln=LINEAS[deal.linea]||{};
+                return (
+                  <div key={deal.id} className="kcard" style={{borderLeftColor:ln.color,cursor:"default"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                      <p style={{fontSize:13,fontWeight:700,color:"#1e2a4a",lineHeight:1.3,flex:1,marginRight:5}}>{deal.titulo}</p>
+                      <button onClick={()=>{setForm({...deal});setModal("edit");}} style={{background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#9ca3af",padding:"4px",flexShrink:0}}>✏️</button>
+                    </div>
+                    {c&&<p style={{fontSize:12,color:"#6b7280",marginBottom:4}}>👤 {c.name}</p>}
+                    {deal.valor>0&&<p style={{fontSize:13,fontWeight:800,color:ln.color}}>€{deal.valor.toLocaleString("es-ES")}</p>}
+                    {deal.notas&&<p style={{fontSize:11,color:"#9ca3af",marginTop:4,borderTop:"1px solid #f0f3fb",paddingTop:4}}>{deal.notas}</p>}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+                      <select style={{fontSize:11,border:"1px solid #dde2f0",borderRadius:6,padding:"3px 6px",background:"white",color:"#374151"}}
+                        value={etapa} onChange={e=>move(deal.id,e.target.value)}>
+                        {etapas.map(et=><option key={et} value={et}>{ETAPA_LABELS[et]||et}</option>)}
+                      </select>
+                      <button onClick={()=>del(deal.id)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#fca5a5",padding:"4px"}}>✕</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {ed.length===0&&<div style={{textAlign:"center",padding:"24px 0",color:"#dde2f0",fontSize:28}}>○<p style={{fontSize:12,marginTop:6}}>Sin oportunidades</p></div>}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Tablero completo — escritorio y tablet */}
+      <div className="kanban-full">
         {etapas.map(etapa=>{
           const ed=lDe.filter(d=>d.etapa===etapa);
           const ev=ed.reduce((s,d)=>s+(d.valor||0),0);
@@ -1293,7 +1509,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
         </div>
         <button className="btn-p" onClick={()=>{setForm({prioridad:"media",fecha:today(),comercialId:user.id});setModal("new");}}>+ Nueva tarea</button>
       </div>
-      <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
+      <div className="tabs-scroll" style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
         {[["semana","📅 Esta semana"],["pendientes","⏳ Pendientes"],["completadas","✅ Completadas"],["todas","📋 Todas"]].map(([f,l])=>(
           <button key={f} className={`tab ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{l}</button>
         ))}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from './utils/supabase';
+import { supabase, sanitizeFileName, compressFileIfPdf } from './utils/supabase';
 
 const BRAND = '#002292';
 const TIPOS_INMUEBLE = ['Piso','Casa/Chalet','Local comercial','Oficina','Garaje','Trastero','Terreno','Nave industrial','Finca rústica'];
@@ -714,9 +714,10 @@ function TabDocs({ property, user }) {
     setUploading(true);
     try {
       const ts = Date.now();
-      const fileName = `${ts}-${file.name}`;
+      const fileName = `${ts}-${sanitizeFileName(file.name)}`;
       const storagePath = `properties/${property.id}/docs/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, file, { upsert:true });
+      const compressedFile = await compressFileIfPdf(file);
+      const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, compressedFile, { upsert:true });
       if (upErr) throw upErr;
       const { data: rec, error: dbErr } = await supabase.from('property_documents').insert({
         id: crypto.randomUUID(), property_id: property.id, nombre: file.name,

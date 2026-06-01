@@ -1,10 +1,42 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './utils/supabase';
+import { supabase, sanitizeFileName, compressFileIfPdf } from './utils/supabase';
 
 const BREVO_API_KEY = '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';
 const PARTNER_EMAIL = 'piandorenergia@corporacionlexgal.com';
+const INTERNAL_EMAIL = 'anovo@quenecesitashoy.es';
 const BRAND = '#002292';
 const TARIFAS = ['2.0TD', '3.0TD', '6.1TD', 'Otra'];
+
+const downloadBase64Pdf = (base64, fileName) => {
+  try {
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Error al descargar: ' + e.message);
+  }
+};
+
+const compressPdfBase64 = async (base64) => {
+  if (!base64 || base64.length < 1_400_000) return base64; // < ~1MB, no compress
+  try {
+    const { PDFDocument } = await import('pdf-lib');
+    const pdfBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+    const compressed = await pdfDoc.save({ useObjectStreams: true });
+    let binary = '';
+    for (let i = 0; i < compressed.length; i++) binary += String.fromCharCode(compressed[i]);
+    return btoa(binary);
+  } catch (e) {
+    console.warn('PDF compression failed, using original:', e.message);
+    return base64;
+  }
+};
 
 const fileToBase64 = (file) => new Promise((res, rej) => {
   const reader = new FileReader();
@@ -68,6 +100,7 @@ export default function EnergiaSection({ contact, user, users }) {
   const [showEnviarModal, setShowEnviarModal] = useState(null);
   const [mensaje, setMensaje] = useState('');
   const [sending, setSending] = useState(false);
+  const [subTab, setSubTab] = useState('puntos');
 
   useEffect(() => { loadData(); }, [contact.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -206,6 +239,20 @@ export default function EnergiaSection({ contact, user, users }) {
     }
 
     setSaving(true);
+    const bothInvoices = !!(form.factura_1_nombre && form.factura_2_nombre);
+
+    // Calcular nuevo estado_estudio sin regresar si ya estaba enviado
+    const prevEstado = editingPoint?.estado_estudio;
+    const prevEnviado = editingPoint?.enviado_partner;
+    let nuevoEstado;
+    if (prevEstado === 'estudio_enviado' || prevEnviado) {
+      nuevoEstado = 'estudio_enviado';
+    } else if (bothInvoices) {
+      nuevoEstado = 'estudio_pendiente';
+    } else {
+      nuevoEstado = 'pendiente_subida';
+    }
+
     const payload = {
       contact_id: contact.id,
       comercial_id: user.id,
@@ -222,6 +269,7 @@ export default function EnergiaSection({ contact, user, users }) {
       factura_1_base64: form.factura_1_base64,
       factura_2_nombre: form.factura_2_nombre,
       factura_2_base64: form.factura_2_base64,
+      estado_estudio: nuevoEstado,
     };
 
     let error;
@@ -232,6 +280,53 @@ export default function EnergiaSection({ contact, user, users }) {
     }
 
     if (error) { alert(`Error al guardar: ${error.message}`); setSaving(false); return; }
+
+    // Disparar notificación interna solo la primera vez que se suben las dos facturas
+    const hadBothBefore = !!(editingPoint?.factura_1_nombre && editingPoint?.factura_2_nombre);
+    if (bothInvoices && !hadBothBefore) {
+      const dirPunto = [form.direccion.trim(), form.localidad.trim(), form.provincia.trim()].filter(Boolean).join(', ') || '—';
+      const cupsLine = form.cups.trim() ? `CUPS: ${form.cups.trim().toUpperCase()}` : null;
+      try {
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            sender: { name: user.name, email: user.email },
+            to: [{ email: INTERNAL_EMAIL }],
+            subject: `Nuevo estudio pendiente — ${contact.name}`,
+            textContent: [
+              `Cliente: ${contact.name}`,
+              `Teléfono: ${contact.phone || '—'}`,
+              `Comercial: ${user.name}`,
+              `Punto de suministro: ${form.nombre.trim()}`,
+              cupsLine,
+              `Dirección: ${dirPunto}`,
+            ].filter(Boolean).join('\n'),
+          }),
+        });
+      } catch (e) {
+        console.warn('Error enviando email interno:', e.message);
+      }
+
+      // Mover/crear deal a "Solicitar Estudio"
+      const hoy = new Date().toISOString().split('T')[0];
+      const { data: deals } = await supabase.from('deals').select('id').eq('contact_id', contact.id).eq('linea', 'energia').limit(1);
+      if (deals && deals.length > 0) {
+        await supabase.from('deals').update({ etapa: 'solicitar estudio', updated_at: hoy }).eq('id', deals[0].id);
+      } else {
+        await supabase.from('deals').insert({
+          id: crypto.randomUUID(),
+          contact_id: contact.id,
+          linea: 'energia',
+          etapa: 'solicitar estudio',
+          comercial_id: user.id,
+          titulo: contact.name,
+          valor: 0,
+          updated_at: hoy,
+        });
+      }
+    }
+
     setSaving(false);
     setShowAddModal(false);
     await loadData();
@@ -248,7 +343,7 @@ export default function EnergiaSection({ contact, user, users }) {
   const openEnviarModal = (pt) => {
     setShowEnviarModal(pt);
     setMensaje(
-      `Estimados, adjunto les envío las facturas de consumo eléctrico del cliente ${contact.name} correspondientes al punto de suministro "${pt.nombre}"${pt.cups ? ` (CUPS: ${pt.cups})` : ''} para su estudio y propuesta de ahorro. Quedamos a su disposición para cualquier consulta. Un saludo.`
+      `Estimados, adjunto les envío las facturas de consumo eléctrico del cliente ${contact.name} para su estudio y propuesta de ahorro. Quedamos a su disposición. Un saludo.`
     );
   };
 
@@ -275,6 +370,12 @@ export default function EnergiaSection({ contact, user, users }) {
         `Comercializadora actual: ${pt.comercializadora_actual || '—'}`,
       ].join('\n');
 
+      // Comprimir PDFs antes de adjuntar si superan 1 MB
+      const [f1b64, f2b64] = await Promise.all([
+        compressPdfBase64(pt.factura_1_base64),
+        compressPdfBase64(pt.factura_2_base64),
+      ]);
+
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -285,11 +386,11 @@ export default function EnergiaSection({ contact, user, users }) {
         body: JSON.stringify({
           sender: { name: user.name, email: user.email },
           to: [{ email: PARTNER_EMAIL }],
-          subject: `Facturas energía — ${contact.name} — ${pt.nombre}`,
+          subject: `Facturas energía — ${contact.name}`,
           textContent: bodyText,
           attachment: [
-            { content: pt.factura_1_base64, name: pt.factura_1_nombre },
-            { content: pt.factura_2_base64, name: pt.factura_2_nombre },
+            { content: f1b64, name: pt.factura_1_nombre },
+            { content: f2b64, name: pt.factura_2_nombre },
           ],
         }),
       });
@@ -301,7 +402,7 @@ export default function EnergiaSection({ contact, user, users }) {
 
       const fechaEnvio = new Date().toISOString();
       await supabase.from('supply_points')
-        .update({ enviado_partner: true, fecha_envio: fechaEnvio, mensaje, comercial_id: user.id })
+        .update({ enviado_partner: true, fecha_envio: fechaEnvio, mensaje, comercial_id: user.id, estado_estudio: 'estudio_enviado' })
         .eq('id', pt.id);
 
       await supabase.from('interactions').insert({
@@ -332,7 +433,7 @@ export default function EnergiaSection({ contact, user, users }) {
 
       await loadData();
       setShowEnviarModal(null);
-      alert('Facturas enviadas correctamente');
+      alert('Facturas enviadas correctamente al partner');
     } catch (e) {
       alert(`Error al enviar: ${e.message}`);
     } finally {
@@ -384,68 +485,99 @@ export default function EnergiaSection({ contact, user, users }) {
 
   return (
     <div>
-      {points.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '24px 0', color: '#9ca3af', fontSize: 13 }}>
-          No hay puntos de suministro. Añade el primero.
+      {/* ── Subpestañas ── */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '2px solid #dde2f0' }}>
+        {[
+          ['puntos', '📍 Puntos de suministro'],
+          ['estudios', '📊 Historial de estudios'],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSubTab(key)}
+            style={{
+              padding: '8px 18px', fontSize: 12, fontWeight: 700, border: 'none',
+              borderBottom: subTab === key ? `3px solid ${BRAND}` : '3px solid transparent',
+              background: 'transparent', color: subTab === key ? BRAND : '#9ca3af',
+              cursor: 'pointer', marginBottom: -2,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Subpestaña: Puntos de suministro ── */}
+      {subTab === 'puntos' && (
+        <div>
+          {points.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9ca3af', fontSize: 13 }}>
+              No hay puntos de suministro. Añade el primero.
+            </div>
+          )}
+
+          {points.map(pt => {
+            const contract = contractsByPointId[pt.id] || null;
+            const contractDocs = contract ? (docsByContractId[contract.id] || []) : [];
+            return (
+              <SupplyPointCard
+                key={pt.id}
+                pt={pt}
+                users={users}
+                contact={contact}
+                user={user}
+                contract={contract}
+                contractDocs={contractDocs}
+                onEdit={() => openEdit(pt)}
+                onDelete={() => handleDeletePoint(pt)}
+                onEnviar={() => openEnviarModal(pt)}
+                onAprobar={() => handleAprobarEstudio(pt)}
+                onRefresh={loadData}
+              />
+            );
+          })}
+
+          <button
+            onClick={openAdd}
+            style={{
+              width: '100%', padding: '10px 0', borderRadius: 10,
+              border: `2px dashed ${BRAND}`, fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', background: '#f0f4ff', color: BRAND,
+              marginTop: points.length > 0 ? 10 : 0,
+            }}
+          >
+            Añadir punto de suministro
+          </button>
+
+          {showAddModal && (
+            <AddEditModal
+              editingPoint={editingPoint}
+              form={form}
+              uploading={uploading}
+              saving={saving}
+              onClose={() => setShowAddModal(false)}
+              onChange={handleFormChange}
+              onUpload={handleFormUpload}
+              onSave={handleSave}
+            />
+          )}
+
+          {showEnviarModal && (
+            <EnviarModal
+              pt={showEnviarModal}
+              contact={contact}
+              mensaje={mensaje}
+              sending={sending}
+              onClose={() => setShowEnviarModal(null)}
+              onMensajeChange={setMensaje}
+              onEnviar={handleEnviar}
+            />
+          )}
         </div>
       )}
 
-      {points.map(pt => {
-        const contract = contractsByPointId[pt.id] || null;
-        const contractDocs = contract ? (docsByContractId[contract.id] || []) : [];
-        return (
-          <SupplyPointCard
-            key={pt.id}
-            pt={pt}
-            users={users}
-            contact={contact}
-            user={user}
-            contract={contract}
-            contractDocs={contractDocs}
-            onEdit={() => openEdit(pt)}
-            onDelete={() => handleDeletePoint(pt)}
-            onEnviar={() => openEnviarModal(pt)}
-            onAprobar={() => handleAprobarEstudio(pt)}
-            onRefresh={loadData}
-          />
-        );
-      })}
-
-      <button
-        onClick={openAdd}
-        style={{
-          width: '100%', padding: '10px 0', borderRadius: 10,
-          border: `2px dashed ${BRAND}`, fontSize: 14, fontWeight: 700,
-          cursor: 'pointer', background: '#f0f4ff', color: BRAND,
-          marginTop: points.length > 0 ? 10 : 0,
-        }}
-      >
-        Añadir punto de suministro
-      </button>
-
-      {showAddModal && (
-        <AddEditModal
-          editingPoint={editingPoint}
-          form={form}
-          uploading={uploading}
-          saving={saving}
-          onClose={() => setShowAddModal(false)}
-          onChange={handleFormChange}
-          onUpload={handleFormUpload}
-          onSave={handleSave}
-        />
-      )}
-
-      {showEnviarModal && (
-        <EnviarModal
-          pt={showEnviarModal}
-          contact={contact}
-          mensaje={mensaje}
-          sending={sending}
-          onClose={() => setShowEnviarModal(null)}
-          onMensajeChange={setMensaje}
-          onEnviar={handleEnviar}
-        />
+      {/* ── Subpestaña: Historial de estudios ── */}
+      {subTab === 'estudios' && (
+        <StudiesSection contact={contact} user={user} users={users} points={points} />
       )}
     </div>
   );
@@ -455,15 +587,23 @@ export default function EnergiaSection({ contact, user, users }) {
 
 function SupplyPointCard({ pt, users, contact, user, contract, contractDocs, onEdit, onDelete, onEnviar, onAprobar, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
-  const enviado = pt.enviado_partner;
   const bothReady = !!(pt.factura_1_nombre && pt.factura_2_nombre);
   const com = users?.find(u => u.id === pt.comercial_id);
   const estudioAprobado = contract?.estudio_aprobado;
 
+  // Estado efectivo: usar campo nuevo o inferir de campos legacy
+  const efectivo = pt.estado_estudio ||
+    (pt.enviado_partner ? 'estudio_enviado' : (bothReady ? 'estudio_pendiente' : 'pendiente_subida'));
+
+  const headerBg = estudioAprobado ? '#eff6ff'
+    : efectivo === 'estudio_enviado' ? '#f0fdf4'
+    : efectivo === 'estudio_pendiente' ? '#fffbeb'
+    : '#f8f9fd';
+
   return (
     <div style={{ border: '1.5px solid #dde2f0', borderRadius: 12, marginBottom: 12, overflow: 'hidden' }}>
       {/* Cabecera */}
-      <div style={{ padding: '12px 16px', background: estudioAprobado ? '#eff6ff' : enviado ? '#f0fdf4' : '#f8f9fd' }}>
+      <div style={{ padding: '12px 16px', background: headerBg }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
@@ -472,14 +612,30 @@ function SupplyPointCard({ pt, users, contact, user, contract, contractDocs, onE
                 <span style={{ fontSize: 10, fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', borderRadius: 20, padding: '2px 8px' }}>
                   Contratación
                 </span>
-              ) : enviado ? (
+              ) : efectivo === 'estudio_enviado' ? (
                 <span style={{ fontSize: 10, fontWeight: 700, background: '#d1fae5', color: '#059669', borderRadius: 20, padding: '2px 8px' }}>
-                  Enviado
+                  ✅ Estudio enviado a partner
+                </span>
+              ) : efectivo === 'estudio_pendiente' ? (
+                <span style={{ fontSize: 10, fontWeight: 700, background: '#fef3c7', color: '#d97706', borderRadius: 20, padding: '2px 8px' }}>
+                  ⏳ Estudio pendiente
                 </span>
               ) : (
-                <span style={{ fontSize: 10, fontWeight: 700, background: '#fef3c7', color: '#d97706', borderRadius: 20, padding: '2px 8px' }}>
-                  Pendiente
+                <span style={{ fontSize: 10, fontWeight: 700, background: '#f3f4f6', color: '#6b7280', borderRadius: 20, padding: '2px 8px' }}>
+                  Pendiente subida
                 </span>
+              )}
+              {/* Botón Enviar a Partner visible directo en cabecera */}
+              {efectivo === 'estudio_pendiente' && !estudioAprobado && (
+                <button
+                  onClick={onEnviar}
+                  style={{
+                    fontSize: 10, fontWeight: 700, background: '#d97706', color: 'white',
+                    border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                  }}
+                >
+                  📤 Enviar a Partner
+                </button>
               )}
             </div>
             {pt.cups && (
@@ -509,7 +665,6 @@ function SupplyPointCard({ pt, users, contact, user, contract, contractDocs, onE
               ['Tarifa', pt.tarifa],
               ['Potencia', pt.potencia_contratada ? `${pt.potencia_contratada} kW` : null],
               ['Comercializadora', pt.comercializadora_actual],
-              ['Facturas', `${pt.factura_1_nombre ? '✓' : '✗'} F1  ${pt.factura_2_nombre ? '✓' : '✗'} F2`],
             ].filter(([, v]) => v).map(([k, v]) => (
               <div key={k}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 2 }}>{k}</p>
@@ -518,36 +673,61 @@ function SupplyPointCard({ pt, users, contact, user, contract, contractDocs, onE
             ))}
           </div>
 
+          {/* Facturas descargables */}
+          {(pt.factura_1_nombre || pt.factura_2_nombre) && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Facturas</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[1, 2].map(n => {
+                  const nombre = pt[`factura_${n}_nombre`];
+                  const b64 = pt[`factura_${n}_base64`];
+                  return nombre ? (
+                    <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8f9fd', borderRadius: 8, border: '1px solid #dde2f0' }}>
+                      <span style={{ fontSize: 12 }}>📄</span>
+                      <span style={{ fontSize: 11, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Factura {n}: {nombre}
+                      </span>
+                      {b64 && (
+                        <button
+                          onClick={() => downloadBase64Pdf(b64, nombre)}
+                          style={{ fontSize: 10, fontWeight: 700, background: '#e6eaf8', color: BRAND, border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}
+                        >
+                          ⬇ Descargar
+                        </button>
+                      )}
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── FASE 1 ── */}
-          {!enviado && (
+          {efectivo !== 'estudio_enviado' && !estudioAprobado && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
                 Fase 1 — Estudio energético
               </p>
-              <button
-                onClick={onEnviar}
-                disabled={!bothReady}
-                style={{
-                  width: '100%', padding: '9px 0', borderRadius: 8, border: 'none',
-                  fontSize: 13, fontWeight: 700,
-                  cursor: bothReady ? 'pointer' : 'not-allowed',
-                  background: bothReady ? '#d97706' : '#f3f4f6',
-                  color: bothReady ? 'white' : '#9ca3af',
-                }}
-              >
-                {bothReady ? 'Enviar facturas al partner' : 'Enviar al partner — sube las 2 facturas primero'}
-              </button>
+              {efectivo === 'estudio_pendiente' ? (
+                <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600, textAlign: 'center', padding: '8px 0', background: '#fffbeb', borderRadius: 8 }}>
+                  ⏳ Facturas subidas — usa el botón "📤 Enviar a Partner" para enviarlas
+                </p>
+              ) : (
+                <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}>
+                  Sube las dos facturas para continuar
+                </p>
+              )}
             </div>
           )}
 
-          {enviado && !estudioAprobado && (
+          {efectivo === 'estudio_enviado' && !estudioAprobado && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
                 Fase 1 — Estudio energético
               </p>
               {pt.fecha_envio && (
                 <p style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginBottom: 10 }}>
-                  Facturas enviadas el {new Date(pt.fecha_envio).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  ✅ Facturas enviadas el {new Date(pt.fecha_envio).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                   {com ? ` por ${com.name}` : ''}
                 </p>
               )}
@@ -1078,5 +1258,280 @@ function FormInput({ value, onChange, placeholder, maxLength }) {
       maxLength={maxLength}
       style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, color: '#1e2a4a', outline: 'none', boxSizing: 'border-box' }}
     />
+  );
+}
+
+// ─── Historial de estudios energéticos ───────────────────────────────────────
+
+const ESTADO_ESTUDIO_CONFIG = {
+  pendiente: { label: 'Pendiente revisión', bg: '#fef3c7', color: '#d97706' },
+  aceptado:  { label: 'Aceptado',           bg: '#d1fae5', color: '#059669' },
+  rechazado: { label: 'Rechazado',           bg: '#fee2e2', color: '#dc2626' },
+};
+
+function StudiesSection({ contact, user, points }) {
+  const [studies, setStudies] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingStudy, setEditingStudy] = useState(null);
+  const [form, setForm] = useState({ fecha: '', supply_point_id: '', estado: 'pendiente', notas: '' });
+  const [pendingFile, setPendingFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const loadStudies = async () => {
+    setLoaded(false);
+    const { data } = await supabase
+      .from('energy_studies')
+      .select('*')
+      .eq('contact_id', contact.id)
+      .order('fecha', { ascending: false });
+    setStudies(data || []);
+    setLoaded(true);
+  };
+
+  useEffect(() => { loadStudies(); }, [contact.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openAdd = () => {
+    setEditingStudy(null);
+    setForm({ fecha: new Date().toISOString().split('T')[0], supply_point_id: '', estado: 'pendiente', notas: '' });
+    setPendingFile(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (s) => {
+    setEditingStudy(s);
+    setForm({ fecha: s.fecha || '', supply_point_id: s.supply_point_id || '', estado: s.estado || 'pendiente', notas: s.notas || '' });
+    setPendingFile(null);
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.fecha) { alert('La fecha es obligatoria'); return; }
+    setSaving(true);
+    try {
+      let archivo_url = editingStudy?.archivo_url || null;
+      let archivo_nombre = editingStudy?.archivo_nombre || null;
+
+      if (pendingFile) {
+        setUploading(true);
+        const compressed = await compressFileIfPdf(pendingFile);
+        const safeName = sanitizeFileName(pendingFile.name);
+        const studyId = editingStudy?.id || crypto.randomUUID();
+        const storagePath = `energy_studies/${contact.id}/${studyId}_${Date.now()}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, compressed, { upsert: true });
+        if (upErr) throw new Error(`Error al subir PDF: ${upErr.message}`);
+        archivo_url = storagePath;
+        archivo_nombre = pendingFile.name;
+        setUploading(false);
+      }
+
+      const now = new Date().toISOString();
+      const payload = {
+        contact_id: contact.id,
+        supply_point_id: form.supply_point_id || null,
+        fecha: form.fecha,
+        estado: form.estado,
+        notas: form.notas || null,
+        archivo_url,
+        archivo_nombre,
+        comercial_id: user.id,
+      };
+
+      if (editingStudy) {
+        const { error } = await supabase.from('energy_studies').update(payload).eq('id', editingStudy.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('energy_studies').insert({ id: crypto.randomUUID(), ...payload, created_at: now });
+        if (error) throw error;
+      }
+
+      setShowForm(false);
+      await loadStudies();
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setSaving(false);
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (s) => {
+    if (!window.confirm('¿Eliminar este estudio? Esta acción no se puede deshacer.')) return;
+    if (s.archivo_url) {
+      await supabase.storage.from('documentos').remove([s.archivo_url]);
+    }
+    await supabase.from('energy_studies').delete().eq('id', s.id);
+    await loadStudies();
+  };
+
+  const handleChangeEstado = async (s, nuevoEstado) => {
+    await supabase.from('energy_studies').update({ estado: nuevoEstado }).eq('id', s.id);
+    setStudies(prev => prev.map(x => x.id === s.id ? { ...x, estado: nuevoEstado } : x));
+  };
+
+  const handleDownload = async (s) => {
+    const { data, error } = await supabase.storage.from('documentos').createSignedUrl(s.archivo_url, 3600);
+    if (error) { alert(`Error al generar enlace: ${error.message}`); return; }
+    window.open(data.signedUrl, '_blank');
+  };
+
+  if (!loaded) return <p style={{ color: '#9ca3af', fontSize: 13 }}>Cargando estudios...</p>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <button
+          onClick={openAdd}
+          style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: BRAND, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          ➕ Añadir estudio
+        </button>
+      </div>
+
+      {studies.length === 0 && (
+        <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: '24px 0' }}>
+          No hay estudios registrados. Añade el primero.
+        </p>
+      )}
+
+      {studies.map(s => {
+        const pt = points.find(p => p.id === s.supply_point_id);
+        const ec = ESTADO_ESTUDIO_CONFIG[s.estado] || ESTADO_ESTUDIO_CONFIG.pendiente;
+        return (
+          <div key={s.id} style={{ border: '1.5px solid #dde2f0', borderRadius: 12, padding: '12px 16px', marginBottom: 10, background: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: BRAND }}>
+                    {s.fecha ? new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                  </span>
+                  {pt && <span style={{ fontSize: 11, color: '#6b7280' }}>— {pt.nombre}{pt.cups ? ` (${pt.cups})` : ''}</span>}
+                  <span style={{ fontSize: 10, fontWeight: 700, background: ec.bg, color: ec.color, borderRadius: 20, padding: '2px 8px' }}>
+                    {ec.label}
+                  </span>
+                </div>
+                {s.notas && (
+                  <p style={{ fontSize: 12, color: '#374151', marginBottom: 6, lineHeight: 1.4 }}>{s.notas}</p>
+                )}
+                {s.archivo_nombre && (
+                  <button
+                    onClick={() => handleDownload(s)}
+                    style={{ fontSize: 11, color: BRAND, background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                  >
+                    📄 {s.archivo_nombre}
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select
+                  value={s.estado}
+                  onChange={e => handleChangeEstado(s, e.target.value)}
+                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 6, border: '1.5px solid #dde2f0', cursor: 'pointer', background: 'white', color: '#374151' }}
+                >
+                  {Object.entries(ESTADO_ESTUDIO_CONFIG).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+                <button onClick={() => openEdit(s)} style={chipBtn('#f0fdf4', '#059669')}>Editar</button>
+                <button onClick={() => handleDelete(s)} style={chipBtn('#fef2f2', '#dc2626')}>Eliminar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,20,80,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
+          <div style={{ background: 'white', borderRadius: 18, padding: 24, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: BRAND, marginBottom: 18 }}>
+              {editingStudy ? 'Editar estudio' : 'Nuevo estudio energético'}
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <FormLabel>Fecha *</FormLabel>
+                <input
+                  type="date"
+                  value={form.fecha}
+                  onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <FormLabel>Estado</FormLabel>
+                <select
+                  value={form.estado}
+                  onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
+                >
+                  {Object.entries(ESTADO_ESTUDIO_CONFIG).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <FormLabel>Punto de suministro</FormLabel>
+                <select
+                  value={form.supply_point_id}
+                  onChange={e => setForm(f => ({ ...f, supply_point_id: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
+                >
+                  <option value="">— Sin vincular —</option>
+                  {points.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}{p.cups ? ` (${p.cups})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <FormLabel>PDF del estudio</FormLabel>
+                {(pendingFile || editingStudy?.archivo_nombre) && (
+                  <p style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginBottom: 6 }}>
+                    📄 {pendingFile ? pendingFile.name : editingStudy.archivo_nombre}
+                    {pendingFile && <span style={{ color: '#9ca3af', fontWeight: 400 }}> (nuevo)</span>}
+                  </p>
+                )}
+                <label style={{ cursor: 'pointer', display: 'inline-block' }}>
+                  <span style={{ fontSize: 12, color: BRAND, fontWeight: 600, display: 'inline-block', padding: '6px 14px', background: '#e6eaf8', borderRadius: 8 }}>
+                    {pendingFile || editingStudy?.archivo_nombre ? 'Cambiar PDF' : '+ Subir PDF'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    style={{ display: 'none' }}
+                    onChange={e => { setPendingFile(e.target.files[0] || null); e.target.value = ''; }}
+                  />
+                </label>
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <FormLabel>Notas</FormLabel>
+                <textarea
+                  value={form.notas}
+                  onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
+                  rows={3}
+                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', color: '#1e2a4a' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowForm(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #dde2f0', background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || uploading}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: (saving || uploading) ? '#9ca3af' : BRAND, color: 'white', fontSize: 13, fontWeight: 700, cursor: (saving || uploading) ? 'not-allowed' : 'pointer' }}
+              >
+                {uploading ? 'Subiendo PDF...' : saving ? 'Guardando...' : 'Guardar estudio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
