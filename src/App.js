@@ -88,6 +88,19 @@ const toSnake = (obj) => {
   return Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] || k, v]));
 };
 
+// Normaliza el campo linea a array siempre.
+// Maneja: null → [], array → array, string "energia" → ["energia"],
+// formato PostgreSQL "{energia,alarmas}" → ["energia","alarmas"]
+const parseLinea = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string') {
+    if (v.startsWith('{')) return v.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean);
+    return [v];
+  }
+  return [];
+};
+
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -245,10 +258,10 @@ export default function App() {
       supabase.from('tasks').select('*'),
     ]);
     const deals = (d.data || []).map(toCamel);
-    console.log('[loadAll] contacts sample linea:', c.data?.[0]?.linea, '| type:', typeof c.data?.[0]?.linea);
+    console.log('[loadAll] contacts sample linea raw:', c.data?.[0]?.linea, '| type:', typeof c.data?.[0]?.linea);
     setData({
       users:        (u.data || []).map(toCamel),
-      contacts:     (c.data || []).map(toCamel),
+      contacts:     (c.data || []).map(r => { const c2 = toCamel(r); return { ...c2, linea: parseLinea(c2.linea) }; }),
       interactions: (i.data || []).map(toCamel),
       deals,
       tasks:        (t.data || []).map(toCamel),
@@ -266,7 +279,7 @@ export default function App() {
       console.log('[saveContact:new] linea enviado→', payload.linea, '| type:', typeof payload.linea);
       const { data: rec, error } = await supabase.from('contacts').insert(payload).select().single();
       if (error) { console.error('[saveContact]', error); alert(`Error al guardar contacto:\n${error.message}`); return; }
-      const newContact = rec ? toCamel(rec) : null;
+      const newContact = rec ? { ...toCamel(rec), linea: parseLinea(rec.linea) } : null;
       console.log('[saveContact:new] linea guardado en Supabase→', newContact?.linea);
       if (newContact) setData(d => ({ ...d, contacts: [...d.contacts, newContact] }));
 
@@ -294,7 +307,7 @@ export default function App() {
       console.log('[saveContact:edit] linea enviado→', updatePayload.linea, '| type:', typeof updatePayload.linea);
       const { data: rec, error } = await supabase.from('contacts').update(updatePayload).eq('id', normalizedForm.id).select().single();
       if (error) { console.error('[saveContact update]', error); alert(`Error al actualizar:\n${error.message}`); return; }
-      const updated = rec ? toCamel(rec) : normalizedForm;
+      const updated = rec ? { ...toCamel(rec), linea: parseLinea(rec.linea) } : normalizedForm;
       console.log('[saveContact:edit] linea guardado en Supabase→', updated.linea);
       setData(d => ({ ...d, contacts: d.contacts.map(c => c.id === normalizedForm.id ? updated : c) }));
     }
@@ -417,7 +430,7 @@ export default function App() {
 
   const canSee = l => ["admin","socio"].includes(user.role) || user.lineaPermisos?.includes(l);
   const vis = (user.role==="admin"||user.role==="socio") ? data.users.map(u=>u.id) : [user.id];
-  const myCon = data.contacts.filter(c=>vis.includes(c.comercialId)&&(Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[]).some(l=>canSee(l)));
+  const myCon = data.contacts.filter(c=>vis.includes(c.comercialId)&&parseLinea(c.linea).some(l=>canSee(l)));
   const myDea = data.deals.filter(d=>vis.includes(d.comercialId)&&canSee(d.linea));
   const myTas = data.tasks.filter(t=>vis.includes(t.comercialId));
 
@@ -648,7 +661,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
   const openNew=()=>{const defaultLinea=Object.keys(LINEAS).find(k=>canSee(k))||"alarmas";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
   const openEdit=c=>{
     console.log('[openEdit] contact.linea:', c.linea, '| type:', typeof c.linea);
-    setForm({...c, linea: Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[]});
+    setForm({...c, linea: parseLinea(c.linea)});
     setModal("edit");
   };
   const save=async()=>{if(!form.name?.trim())return;await onSaveContact(form,modal==="new");setModal(null);};
@@ -845,7 +858,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
   const [emailForm,setEmailForm]=useState({asunto:"",mensaje:""});
   const [emailAttachments,setEmailAttachments]=useState([]);
   const [sendingEmail,setSendingEmail]=useState(false);
-  const contactLineas=Array.isArray(contact.linea)?contact.linea:contact.linea?[contact.linea]:[];
+  const contactLineas=parseLinea(contact.linea);
   const ln=LINEAS[contactLineas[0]]||{};
   const com=users.find(u=>u.id===contact.comercialId);
   const contactDeals=(deals||[]).filter(d=>d.contactId===contact.id&&d.etapa!=="perdido");
