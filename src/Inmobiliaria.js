@@ -538,10 +538,11 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
 
       <Sec title="Descripción y notas">
         <div style={{ marginBottom:12 }}>
-          <FL>Descripción para la web (pública)</FL>
+          <FL>Descripción comercial (se publica en la web)</FL>
           <textarea value={form.descripcion_web} onChange={e => set('descripcion_web',e.target.value)}
-            placeholder="Descripción pública del inmueble..."
+            placeholder="Descripción pública del inmueble..." rows={6}
             style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:120, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+          <p style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Este texto aparecerá en la ficha del inmueble en quenecesitashoy.es</p>
         </div>
         <div style={{ marginBottom:12 }}>
           <FL>Notas internas (solo CRM)</FL>
