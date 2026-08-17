@@ -580,7 +580,7 @@ function TabFotos({ property, onPropUpdated }) {
   const [photos, setPhotos] = useState([]);
   const [signedUrls, setSignedUrls] = useState({});
   const [orientations, setOrientations] = useState({});
-  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null); // { done, total } | null
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
@@ -606,35 +606,43 @@ function TabFotos({ property, onPropUpdated }) {
     const files = Array.from(e.target.files);
     e.target.value = '';
     if (!files.length) return;
-    if (photos.length >= 20) { alert('Máximo 20 fotos'); return; }
-    await handleUpload(files[0]);
+    const remaining = 20 - photos.length;
+    if (remaining <= 0) { alert('Máximo 20 fotos'); return; }
+    const toUpload = files.slice(0, remaining);
+    if (files.length > remaining) alert(`Solo se subirán ${remaining} foto(s): el máximo son 20 por inmueble.`);
+    await handleUploadMultiple(toUpload);
   };
 
-  const handleUpload = async (file) => {
-    setUploading(true);
-    try {
-      const nombreLimpio = sanitizeFileName(file.name);
-      const storagePath = `properties/${property.id}/fotos/${Date.now()}_${nombreLimpio}`;
-      const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, file, { upsert:true });
-      if (upErr) throw upErr;
-      const orden = photos.length;
-      const { data: rec, error: dbErr } = await supabase.from('property_photos').insert({
-        id: crypto.randomUUID(), property_id: property.id, url: storagePath,
-        nombre: file.name, orden, created_at: new Date().toISOString(),
-      }).select().single();
-      if (dbErr) throw dbErr;
-      const newPhotos = [...photos, rec];
-      setPhotos(newPhotos);
-      refreshSignedUrls(newPhotos);
-      const fotosPaths = newPhotos.map(p => p.url);
-      await supabase.from('properties').update({ fotos: fotosPaths }).eq('id', property.id);
-      onPropUpdated({ ...property, fotos: fotosPaths });
-    } catch (error) {
-      console.log('[foto upload] error:', error);
-      alert(`Error al subir foto: ${error.message}`);
-    } finally {
-      setUploading(false);
+  const handleUploadMultiple = async (files) => {
+    setUploadProgress({ done:0, total:files.length });
+    let currentPhotos = photos;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const nombreLimpio = sanitizeFileName(file.name);
+        const storagePath = `properties/${property.id}/fotos/${Date.now()}_${i}_${nombreLimpio}`;
+        const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, file, { upsert:true });
+        if (upErr) throw upErr;
+        const orden = currentPhotos.length;
+        const { data: rec, error: dbErr } = await supabase.from('property_photos').insert({
+          id: crypto.randomUUID(), property_id: property.id, url: storagePath,
+          nombre: file.name, orden, created_at: new Date().toISOString(),
+        }).select().single();
+        if (dbErr) throw dbErr;
+        currentPhotos = [...currentPhotos, rec];
+        setPhotos(currentPhotos);
+        refreshSignedUrls(currentPhotos);
+      } catch (error) {
+        console.log('[foto upload] error:', error);
+        alert(`Error al subir "${file.name}": ${error.message}`);
+      } finally {
+        setUploadProgress(p => p ? { ...p, done: p.done + 1 } : null);
+      }
     }
+    const fotosPaths = currentPhotos.map(p => p.url);
+    await supabase.from('properties').update({ fotos: fotosPaths }).eq('id', property.id);
+    onPropUpdated({ ...property, fotos: fotosPaths });
+    setUploadProgress(null);
   };
 
   const handleDelete = async (photo) => {
@@ -677,15 +685,27 @@ function TabFotos({ property, onPropUpdated }) {
           <p style={{ fontSize:13, fontWeight:600, color:'#374151' }}>{photos.length}/20 fotos</p>
           <p style={{ fontSize:11, color:'#9ca3af' }}>Arrastra para reordenar · La primera foto es la imagen principal</p>
         </div>
-        <label style={{ cursor: photos.length >= 20 || uploading ? 'not-allowed' : 'pointer' }}>
-          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:8, background: photos.length >= 20 || uploading ? '#9ca3af' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
-            {uploading ? 'Subiendo...' : '+ Añadir foto'}
+        <label style={{ cursor: photos.length >= 20 || uploadProgress ? 'not-allowed' : 'pointer' }}>
+          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:8, background: photos.length >= 20 || uploadProgress ? '#9ca3af' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
+            {uploadProgress ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}...` : '+ Añadir fotos'}
           </span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} disabled={photos.length >= 20 || uploading} multiple={false} />
+          <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} disabled={photos.length >= 20 || !!uploadProgress} multiple />
         </label>
       </div>
 
-      {photos.length === 0 && !uploading && (
+      {uploadProgress && (
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#6b7280', marginBottom:4 }}>
+            <span>Subiendo fotos...</span>
+            <span>{uploadProgress.done}/{uploadProgress.total}</span>
+          </div>
+          <div style={{ width:'100%', height:6, background:'#e8ecf8', borderRadius:4, overflow:'hidden' }}>
+            <div style={{ width:`${(uploadProgress.done/uploadProgress.total)*100}%`, height:'100%', background:BRAND, transition:'width .2s' }} />
+          </div>
+        </div>
+      )}
+
+      {photos.length === 0 && !uploadProgress && (
         <div style={{ textAlign:'center', padding:'50px 0', background:'#f8f9fd', borderRadius:12, border:'2px dashed #dde2f0', color:'#9ca3af' }}>
           <div style={{ fontSize:44, marginBottom:8 }}>📷</div>
           <p style={{ fontSize:13 }}>No hay fotos. Añade la primera.</p>
