@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase, sanitizeFileName, compressFileIfPdf } from './utils/supabase';
 
 const BRAND = '#002292';
@@ -154,6 +154,21 @@ export default function Inmobiliaria({ user, contacts, users }) {
 function InmuebleCard({ p, onView }) {
   const est = ESTADOS_VENTA[p.estado_venta] || { color:'#6b7280', bg:'#f3f4f6' };
   const fotos = Array.isArray(p.fotos) ? p.fotos : [];
+  const [coverUrl, setCoverUrl] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (fotos[0]) {
+      supabase.storage.from('documentos').createSignedUrl(fotos[0], 3600).then(({ data, error }) => {
+        if (!active) return;
+        if (error) { console.log('[foto upload] error:', error); setCoverUrl(null); return; }
+        setCoverUrl(data.signedUrl);
+      });
+    } else {
+      setCoverUrl(null);
+    }
+    return () => { active = false; };
+  }, [fotos[0]]); // eslint-disable-line
 
   return (
     <div onClick={onView}
@@ -163,8 +178,8 @@ function InmuebleCard({ p, onView }) {
     >
       {/* Foto */}
       <div style={{ height:200, background:'#f0f3fb', position:'relative', overflow:'hidden' }}>
-        {fotos[0] ? (
-          <img src={fotos[0]} alt={p.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+        {coverUrl ? (
+          <img src={coverUrl} alt={p.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
         ) : (
           <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
             <span style={{ fontSize:40 }}>🏠</span>
@@ -563,7 +578,8 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
 
 function TabFotos({ property, onPropUpdated }) {
   const [photos, setPhotos] = useState([]);
-  const [cropFile, setCropFile] = useState(null);
+  const [signedUrls, setSignedUrls] = useState({});
+  const [orientations, setOrientations] = useState({});
   const [uploading, setUploading] = useState(false);
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOver, setDragOver] = useState(null);
@@ -572,42 +588,50 @@ function TabFotos({ property, onPropUpdated }) {
 
   const loadPhotos = async () => {
     const { data } = await supabase.from('property_photos').select('*').eq('property_id', property.id).order('orden', { ascending:true });
-    setPhotos(data || []);
+    const list = data || [];
+    setPhotos(list);
+    refreshSignedUrls(list);
   };
 
-  const handleFileChange = (e) => {
+  const refreshSignedUrls = async (list) => {
+    const entries = await Promise.all(list.map(async p => {
+      const { data, error } = await supabase.storage.from('documentos').createSignedUrl(p.url, 3600);
+      if (error) { console.log('[foto upload] error:', error); return [p.id, null]; }
+      return [p.id, data.signedUrl];
+    }));
+    setSignedUrls(Object.fromEntries(entries));
+  };
+
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = '';
     if (!files.length) return;
     if (photos.length >= 20) { alert('Máximo 20 fotos'); return; }
-    setCropFile(files[0]);
+    await handleUpload(files[0]);
   };
 
-  const handleCropSave = async (croppedFile) => {
-    setCropFile(null);
+  const handleUpload = async (file) => {
     setUploading(true);
     try {
-      const ts = Date.now();
-      const ext = croppedFile.name.split('.').pop();
-      const fileName = `${ts}.${ext}`;
-      const storagePath = `properties/${property.id}/fotos/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, croppedFile, { upsert:true });
+      const nombreLimpio = sanitizeFileName(file.name);
+      const storagePath = `properties/${property.id}/fotos/${Date.now()}_${nombreLimpio}`;
+      const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, file, { upsert:true });
       if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(storagePath);
-      const url = urlData.publicUrl;
       const orden = photos.length;
       const { data: rec, error: dbErr } = await supabase.from('property_photos').insert({
-        id: crypto.randomUUID(), property_id: property.id, url, url_4_5: url,
-        nombre: fileName, orden, created_at: new Date().toISOString(),
+        id: crypto.randomUUID(), property_id: property.id, url: storagePath,
+        nombre: file.name, orden, created_at: new Date().toISOString(),
       }).select().single();
       if (dbErr) throw dbErr;
       const newPhotos = [...photos, rec];
       setPhotos(newPhotos);
-      const fotosUrls = newPhotos.map(p => p.url);
-      await supabase.from('properties').update({ fotos: fotosUrls }).eq('id', property.id);
-      onPropUpdated({ ...property, fotos: fotosUrls });
-    } catch (e) {
-      alert(`Error al subir foto: ${e.message}`);
+      refreshSignedUrls(newPhotos);
+      const fotosPaths = newPhotos.map(p => p.url);
+      await supabase.from('properties').update({ fotos: fotosPaths }).eq('id', property.id);
+      onPropUpdated({ ...property, fotos: fotosPaths });
+    } catch (error) {
+      console.log('[foto upload] error:', error);
+      alert(`Error al subir foto: ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -616,13 +640,14 @@ function TabFotos({ property, onPropUpdated }) {
   const handleDelete = async (photo) => {
     if (!window.confirm('¿Eliminar esta foto?')) return;
     await supabase.from('property_photos').delete().eq('id', photo.id);
-    await supabase.storage.from('documentos').remove([`properties/${property.id}/fotos/${photo.nombre}`]);
+    const { error } = await supabase.storage.from('documentos').remove([photo.url]);
+    if (error) console.log('[foto upload] error:', error);
     const newPhotos = photos.filter(p => p.id !== photo.id).map((p,i) => ({ ...p, orden:i }));
     setPhotos(newPhotos);
     for (const p of newPhotos) await supabase.from('property_photos').update({ orden:p.orden }).eq('id', p.id);
-    const fotosUrls = newPhotos.map(p => p.url);
-    await supabase.from('properties').update({ fotos: fotosUrls }).eq('id', property.id);
-    onPropUpdated({ ...property, fotos: fotosUrls });
+    const fotosPaths = newPhotos.map(p => p.url);
+    await supabase.from('properties').update({ fotos: fotosPaths }).eq('id', property.id);
+    onPropUpdated({ ...property, fotos: fotosPaths });
   };
 
   const handleDrop = async (e, targetIdx) => {
@@ -635,9 +660,14 @@ function TabFotos({ property, onPropUpdated }) {
     setPhotos(reordered);
     setDragIdx(null); setDragOver(null);
     for (const p of reordered) await supabase.from('property_photos').update({ orden:p.orden }).eq('id', p.id);
-    const fotosUrls = reordered.map(p => p.url);
-    await supabase.from('properties').update({ fotos: fotosUrls }).eq('id', property.id);
-    onPropUpdated({ ...property, fotos: fotosUrls });
+    const fotosPaths = reordered.map(p => p.url);
+    await supabase.from('properties').update({ fotos: fotosPaths }).eq('id', property.id);
+    onPropUpdated({ ...property, fotos: fotosPaths });
+  };
+
+  const handleImgLoad = (photoId) => (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    setOrientations(o => ({ ...o, [photoId]: naturalWidth >= naturalHeight ? '16/9' : '4/5' }));
   };
 
   return (
@@ -670,9 +700,14 @@ function TabFotos({ property, onPropUpdated }) {
             onDragOver={e => { e.preventDefault(); setDragOver(idx); }}
             onDrop={e => handleDrop(e, idx)}
             onDragEnd={() => { setDragIdx(null); setDragOver(null); }}
-            style={{ position:'relative', borderRadius:10, overflow:'hidden', border: dragOver===idx ? `2.5px dashed ${BRAND}` : '2px solid #e8ecf8', cursor:'grab', opacity: dragIdx===idx ? 0.4 : 1, background:'white' }}
+            style={{ position:'relative', borderRadius:10, overflow:'hidden', border: dragOver===idx ? `2.5px dashed ${BRAND}` : '2px solid #e8ecf8', cursor:'grab', opacity: dragIdx===idx ? 0.4 : 1, background:'#111' }}
           >
-            <img src={photo.url} alt="" style={{ width:'100%', aspectRatio:'4/5', objectFit:'cover', display:'block' }} />
+            {signedUrls[photo.id] ? (
+              <img src={signedUrls[photo.id]} alt="" onLoad={handleImgLoad(photo.id)}
+                style={{ width:'100%', aspectRatio: orientations[photo.id] || '4/5', objectFit:'contain', display:'block', background:'#111' }} />
+            ) : (
+              <div style={{ width:'100%', aspectRatio:'4/5', display:'flex', alignItems:'center', justifyContent:'center', color:'#9ca3af', fontSize:11 }}>Cargando...</div>
+            )}
             {idx === 0 && (
               <span style={{ position:'absolute', top:8, left:8, background:BRAND, color:'white', fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:20 }}>PRINCIPAL</span>
             )}
@@ -686,8 +721,6 @@ function TabFotos({ property, onPropUpdated }) {
           </div>
         ))}
       </div>
-
-      {cropFile && <CropModal file={cropFile} onSave={handleCropSave} onCancel={() => setCropFile(null)} />}
     </div>
   );
 }
@@ -797,6 +830,22 @@ function TabDocs({ property, user }) {
 function TabPublicacion({ property, onPropUpdated }) {
   const [toggling, setToggling] = useState(false);
   const published = property.publicado_web;
+  const fotos = Array.isArray(property.fotos) ? property.fotos : [];
+  const [coverUrl, setCoverUrl] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (fotos[0]) {
+      supabase.storage.from('documentos').createSignedUrl(fotos[0], 3600).then(({ data, error }) => {
+        if (!active) return;
+        if (error) { console.log('[foto upload] error:', error); setCoverUrl(null); return; }
+        setCoverUrl(data.signedUrl);
+      });
+    } else {
+      setCoverUrl(null);
+    }
+    return () => { active = false; };
+  }, [fotos[0]]); // eslint-disable-line
 
   const handleToggle = async () => {
     setToggling(true);
@@ -809,8 +858,6 @@ function TabPublicacion({ property, onPropUpdated }) {
     onPropUpdated(rec);
     setToggling(false);
   };
-
-  const fotos = Array.isArray(property.fotos) ? property.fotos : [];
 
   return (
     <div style={{ maxWidth:600 }}>
@@ -845,8 +892,8 @@ function TabPublicacion({ property, onPropUpdated }) {
         <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:16 }}>Vista previa web</h3>
         <div style={{ border:'1.5px solid #e8ecf8', borderRadius:12, overflow:'hidden' }}>
           <div style={{ height:180, background:'#f0f3fb', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            {fotos[0]
-              ? <img src={fotos[0]} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            {coverUrl
+              ? <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
               : <span style={{ fontSize:44 }}>🏠</span>}
           </div>
           <div style={{ padding:16 }}>
@@ -862,98 +909,6 @@ function TabPublicacion({ property, onPropUpdated }) {
               {property.banos && <span style={{ fontSize:12, color:'#374151' }}>🚿 {property.banos} baños</span>}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Crop modal ───────────────────────────────────────────────────────────────
-
-function CropModal({ file, onSave, onCancel }) {
-  const DW = 320, DH = 400; // display 4:5
-  const OW = 800, OH = 1000; // output
-  const [imgSrc, setImgSrc] = useState('');
-  const [nat, setNat] = useState({ w:1, h:1 });
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x:0, y:0 });
-  const [dragging, setDragging] = useState(false);
-  const [last, setLast] = useState({ x:0, y:0 });
-  const imgRef = useRef(null);
-
-  useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setImgSrc(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  const onLoad = (e) => {
-    const { naturalWidth:nw, naturalHeight:nh } = e.target;
-    setNat({ w:nw, h:nh });
-    const s = Math.max(DW/nw, DH/nh);
-    setScale(s);
-    setOffset({ x:(DW - nw*s)/2, y:(DH - nh*s)/2 });
-  };
-
-  const clamp = (ox, oy, s) => ({
-    x: Math.min(0, Math.max(DW - nat.w*s, ox)),
-    y: Math.min(0, Math.max(DH - nat.h*s, oy)),
-  });
-
-  const down = (cx,cy) => { setDragging(true); setLast({x:cx,y:cy}); };
-  const move = (cx,cy) => {
-    if (!dragging) return;
-    const dx=cx-last.x, dy=cy-last.y;
-    setLast({x:cx,y:cy});
-    setOffset(o => clamp(o.x+dx, o.y+dy, scale));
-  };
-
-  const handleSave = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = OW; canvas.height = OH;
-    const ctx = canvas.getContext('2d');
-    const r = OW/DW;
-    ctx.drawImage(imgRef.current, offset.x*r, offset.y*r, nat.w*scale*r, nat.h*scale*r);
-    canvas.toBlob(blob => {
-      onSave(new File([blob], file.name.replace(/\.[^.]+$/,'.jpg'), { type:'image/jpeg' }));
-    }, 'image/jpeg', 0.88);
-  };
-
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,20,80,.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:3000, padding:16 }}>
-      <div style={{ background:'white', borderRadius:18, padding:24, maxWidth:380, width:'100%' }}>
-        <h3 style={{ fontSize:15, fontWeight:800, color:BRAND, marginBottom:4 }}>Ajustar encuadre</h3>
-        <p style={{ fontSize:12, color:'#9ca3af', marginBottom:14 }}>Arrastra para ajustar. Formato 4:5.</p>
-
-        <div
-          style={{ width:DW, height:DH, overflow:'hidden', position:'relative', cursor: dragging ? 'grabbing' : 'grab', borderRadius:8, background:'#111', userSelect:'none', margin:'0 auto' }}
-          onMouseDown={e => down(e.clientX,e.clientY)}
-          onMouseMove={e => move(e.clientX,e.clientY)}
-          onMouseUp={() => setDragging(false)}
-          onMouseLeave={() => setDragging(false)}
-          onTouchStart={e => down(e.touches[0].clientX,e.touches[0].clientY)}
-          onTouchMove={e => { e.preventDefault(); move(e.touches[0].clientX,e.touches[0].clientY); }}
-          onTouchEnd={() => setDragging(false)}
-        >
-          {imgSrc && (
-            <img ref={imgRef} src={imgSrc} onLoad={onLoad} alt="" draggable={false}
-              style={{ position:'absolute', left:offset.x, top:offset.y, width:nat.w*scale, height:nat.h*scale, pointerEvents:'none' }} />
-          )}
-          {/* Grid thirds overlay */}
-          <div style={{ position:'absolute', inset:0, pointerEvents:'none',
-            backgroundImage:'linear-gradient(rgba(255,255,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px)',
-            backgroundSize:`${DW/3}px ${DH/3}px` }} />
-        </div>
-
-        <div style={{ display:'flex', gap:8, marginTop:16, justifyContent:'flex-end' }}>
-          <button onClick={onCancel}
-            style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #dde2f0', background:'white', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-            Cancelar
-          </button>
-          <button onClick={handleSave}
-            style={{ padding:'8px 22px', borderRadius:8, border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            Usar esta foto
-          </button>
         </div>
       </div>
     </div>

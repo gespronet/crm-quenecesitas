@@ -284,22 +284,30 @@ export default function App() {
       if (newContact) setData(d => ({ ...d, contacts: [...d.contacts, newContact] }));
 
       // Auto-crear deal en etapa inicial para nuevos prospectos (uno por línea)
-      const lineas = Array.isArray(form.linea) ? form.linea : form.linea ? [form.linea] : [];
-      if (form.tipo === 'prospecto' && lineas.length > 0) {
+      const lineas = normalizedForm.linea; // ya es array normalizado
+      console.log('[saveContact:new] tipo:', normalizedForm.tipo, '| lineas para deals:', lineas);
+      if (normalizedForm.tipo === 'prospecto' && lineas.length > 0) {
         for (const linea of lineas) {
           const dealPayload = toSnake({
             id: genId(),
             contactId: contactId,
             linea: linea,
             etapa: (ETAPAS[linea] || [])[0] || 'prospecto',
-            comercialId: form.comercialId,
-            titulo: form.name,
+            comercialId: normalizedForm.comercialId,
+            titulo: normalizedForm.name,
             valor: 0,
+            createdAt: today(),
             updatedAt: today(),
           });
+          console.log('[saveContact:new] insertando deal:', dealPayload);
           const { data: dealRec, error: dealErr } = await supabase.from('deals').insert(dealPayload).select().single();
-          if (dealErr) console.error('[saveContact] auto-deal error:', dealErr);
-          else if (dealRec) setData(d => ({ ...d, deals: [...d.deals, toCamel(dealRec)] }));
+          if (dealErr) {
+            console.error('[saveContact] auto-deal error:', dealErr);
+            alert(`Deal no creado para línea "${linea}":\n${dealErr.message}`);
+          } else if (dealRec) {
+            console.log('[saveContact:new] deal creado:', dealRec);
+            setData(d => ({ ...d, deals: [...d.deals, toCamel(dealRec)] }));
+          }
         }
       }
     } else {
