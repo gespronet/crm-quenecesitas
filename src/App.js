@@ -1,29 +1,31 @@
 import { useState, useEffect } from "react";
 import logo from "./Que Necesitas - Logo para web y Favicon.png";
 import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase";
-import Productos, { ContactQuotes } from "./Productos";
-import Subastas from "./Subastas";
+import { ContactQuotes } from "./Productos";
 import EnergiaSection from "./EnergiaSection";
 import AlarmaSection from "./AlarmaSection";
 import Inmobiliaria from "./Inmobiliaria";
+import MiSemana from './MiSemana';
 
 const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
 
 const LINEAS = {
-  alarmas:      { label: "🔐 Alarmas",              color: "#dc2626", light: "#fef2f2" },
-  energia:      { label: "⚡ Energía",              color: "#d97706", light: "#fffbeb" },
-  telefonia:    { label: "📱 Telefonía",            color: "#0ea5e9", light: "#f0f9ff" },
-  inmobiliaria: { label: "🏠 Inmobiliaria",         color: "#059669", light: "#ecfdf5" },
-  subastas:     { label: "⚖️ Subastas Judiciales", color: "#7c3aed", light: "#f5f3ff" },
+  alarmas:       { label:"🔐 Alarmas",        color:"#dc2626", light:"#fef2f2" },
+  energia:       { label:"⚡ Energía",        color:"#d97706", light:"#fffbeb" },
+  telefonia:     { label:"📱 Telefonía",      color:"#7c3aed", light:"#f5f3ff" },
+  inmobiliaria:  { label:"🏠 Inmobiliaria",   color:"#059669", light:"#ecfdf5" },
+  venta_directa: { label:"🏷️ Venta Directa",  color:"#0891b2", light:"#ecfeff" },
+  npl:           { label:"📊 NPL",            color:"#1d4ed8", light:"#eff6ff" },
 };
 
 const ETAPAS = {
-  alarmas:      ["prospecto","contacto","visita","propuesta","contrato","instalado","perdido"],
-  energia:      ["prospecto","análisis","propuesta","firmado","activo","perdido"],
-  telefonia:    ["prospecto","análisis","propuesta","firmado","activo","perdido"],
-  inmobiliaria: ["captación","valoración","publicado","visita","oferta","cerrado","perdido"],
-  subastas:     ["inversor","búsqueda","contacto_judicial","due_diligence","puja","adjudicado","perdido"],
+  alarmas:       ["prospecto","contacto","visita","propuesta","contrato","instalado","perdido"],
+  energia:       ["factura_recibida","enviada_partner","opciones_recibidas","seleccionada","docs_solicitados","contratado","seguimiento"],
+  telefonia:     ["prospecto","documentacion","enviado_operador","en_tramite","activo","incidencia","baja"],
+  inmobiliaria:  ["captación","valoración","publicado","visita","oferta","cerrado","perdido"],
+  venta_directa: ["identificado","análisis","propuesta","negociación","docs_solicitados","cerrado","perdido"],
+  npl:           ["identificado","análisis","oferta_enviada","negociación","cerrado","descartado"],
 };
 
 const ETAPA_LABELS = {
@@ -417,7 +419,7 @@ export default function App() {
       email:         form.email,
       password:      form.password || 'pass123',
       role:          form.role || 'comercial',
-      lineaPermisos: form.lineaPermisos || ['alarmas', 'energia'],
+      lineaPermisos: form.lineaPermisos || ['inmobiliaria'],
       managerId:     form.managerId || null,
     });
     const { data: rec, error } = await supabase.from('users').insert(payload).select().single();
@@ -443,15 +445,19 @@ export default function App() {
   const myTas = data.tasks.filter(t=>vis.includes(t.comercialId));
 
   const navItems = [
-    {id:"dashboard",icon:"📊",label:"Dashboard"},
-    {id:"contacts",icon:"👥",label:"Prospectos"},
-    {id:"clients",icon:"🌟",label:"Clientes"},
-    {id:"pipeline",icon:"📋",label:"Pipeline"},
-    {id:"tasks",icon:"✅",label:"Tareas"},
-    {id:"productos",icon:"📦",label:"Productos"},
-    ...(canSee("subastas")?[{id:"subastas",icon:"⚖️",label:"Subastas"}]:[]),
-    ...(canSee("inmobiliaria")?[{id:"inmobiliaria",icon:"🏠",label:"Inmobiliaria"}]:[]),
-    ...(["admin","socio"].includes(user.role)?[{id:"team",icon:"👔",label:"Equipo"}]:[]),
+    { id:"dashboard",    icon:"📊", label:"Dashboard" },
+    { id:"contacts",     icon:"👥", label:"Prospectos" },
+    { id:"clients",      icon:"🌟", label:"Clientes" },
+    { id:"pipeline",     icon:"📋", label:"Pipeline" },
+    { id:"tasks",        icon:"✅", label:"Tareas" },
+    { id:"misemana",     icon:"📅", label:"Mi Semana" },
+    ...(canSee("alarmas")      ?[{ id:"alarmas",       icon:"🔐", label:"Alarmas" }]:[]),
+    ...(canSee("energia")      ?[{ id:"energia",       icon:"⚡", label:"Energía" }]:[]),
+    ...(canSee("telefonia")    ?[{ id:"telefonia",     icon:"📱", label:"Telefonía" }]:[]),
+    ...(canSee("inmobiliaria") ?[{ id:"inmobiliaria",  icon:"🏠", label:"Inmobiliaria" }]:[]),
+    ...(canSee("venta_directa")?[{ id:"venta_directa", icon:"🏷️", label:"Venta Directa" }]:[]),
+    ...(canSee("npl")          ?[{ id:"npl",           icon:"📊", label:"NPL" }]:[]),
+    ...(["admin","socio"].includes(user.role)?[{ id:"team", icon:"👔", label:"Equipo" }]:[]),
   ];
 
   const currentNavLabel = navItems.find(i=>i.id===view)?.label || "CRM";
@@ -548,9 +554,15 @@ export default function App() {
             onDeleteTask={deleteTask}
             onToggleTask={toggleTask}
           />}
-          {view==="productos" && <Productos user={user} contacts={data.contacts} />}
-          {view==="subastas"  && <Subastas user={user} contacts={data.contacts} users={data.users} />}
+          {view==="productos" && null}
+          {view==="subastas" && null}
           {view==="inmobiliaria" && <Inmobiliaria user={user} contacts={data.contacts} users={data.users} />}
+          {view==="misemana"     && <MiSemana user={user} />}
+          {view==="venta_directa"&& <div style={{padding:32,color:"#0891b2",fontWeight:700,fontSize:18}}>🏷️ Venta Directa — próximamente</div>}
+          {view==="npl"          && <div style={{padding:32,color:"#1d4ed8",fontWeight:700,fontSize:18}}>📊 NPL — próximamente</div>}
+          {view==="alarmas"      && <div style={{padding:32,color:"#dc2626",fontWeight:700,fontSize:18}}>🔐 Alarmas — próximamente</div>}
+          {view==="energia"      && <div style={{padding:32,color:"#d97706",fontWeight:700,fontSize:18}}>⚡ Energía — próximamente</div>}
+          {view==="telefonia"    && <div style={{padding:32,color:"#7c3aed",fontWeight:700,fontSize:18}}>📱 Telefonía — próximamente</div>}
           {view==="team"      && <Team
             users={data.users}
             contacts={data.contacts}
@@ -666,7 +678,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
     const lineas=Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[];
     return (fLinea==="all"||lineas.includes(fLinea))&&(c.name.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search)||c.empresa?.toLowerCase().includes(search.toLowerCase()));
   });
-  const openNew=()=>{const defaultLinea=Object.keys(LINEAS).find(k=>canSee(k))||"alarmas";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
+  const openNew=()=>{const defaultLinea = Object.keys(LINEAS).find(k => canSee(k)) || "inmobiliaria";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
   const openEdit=c=>{
     console.log('[openEdit] contact.linea:', c.linea, '| type:', typeof c.linea);
     setForm({...c, linea: parseLinea(c.linea)});
@@ -1616,7 +1628,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
           <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Equipo</h1>
           <p style={{color:"#9ca3af",fontSize:12}}>{com.length} miembros</p>
         </div>
-        <button className="btn-p" onClick={()=>{setForm({role:"comercial",lineaPermisos:["alarmas","energia"]});setModal(true);}}>+ Añadir</button>
+        <button className="btn-p" onClick={()=>{setForm({role:"comercial",lineaPermisos:["inmobiliaria"]});setModal(true);}}>+ Añadir</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
         {com.map(u=>{
