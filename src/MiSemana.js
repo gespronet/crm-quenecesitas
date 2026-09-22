@@ -36,7 +36,14 @@ function genId()          { return crypto.randomUUID(); }
 function timeToMin(t)     { if(!t) return 0; const [h,m]=t.split(":").map(Number); return h*60+m; }
 function minToTime(m)     { return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`; }
 function addWeeks(ds,w)   { const d=new Date(ds+"T12:00:00"); d.setDate(d.getDate()+w*7); return d.toISOString().split("T")[0]; }
-function currentMonday()  { const n=new Date(); const d=n.getDay(); const m=new Date(n); m.setDate(n.getDate()-((d+6)%7)); return m.toISOString().split("T")[0]; }
+function currentMonday()  {
+  const hoy = new Date();
+  const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes...
+  const diff = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() + diff);
+  return lunes.toISOString().split("T")[0];
+}
 function dayLabel(ws,off) { const d=new Date(ws+"T12:00:00"); d.setDate(d.getDate()+off); return d.toLocaleDateString("es-ES",{day:"numeric",month:"short"}); }
 function fmtMin(min)      { const h=Math.floor(min/60); const m=min%60; return h>0?(m>0?`${h}h ${m}′`:`${h}h`):`${m}′`; }
 function dateForDay(ws,dayOfWeek) {
@@ -119,6 +126,7 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
       id:b.id, tipo:b.tipo, dayOfWeek:b.day_of_week,
       startTime:b.hora_inicio?.slice(0,5)||"09:00",
       durationMinutes:b.duration_minutes, completada:b.completado, titulo:b.titulo,
+      taskId:b.task_id,
     })));
 
     // Notas diarias de la semana
@@ -216,10 +224,10 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
     // IDs de los bloques actuales a eliminar del estado App
     const oldBlockIds = blocks.map(b => b.id);
 
-    // Borrar plan anterior en Supabase
+    // 1) Limpiar semana anterior: DELETE de weekly_plans para este comercial + semana
     const { error: delPlanErr } = await supabase.from("weekly_plans").delete()
       .eq("comercial_id", viewUserId).eq("week_start", weekStart);
-    if (delPlanErr) { alert("Error al generar semana:\n" + delPlanErr.message); return; }
+    if (delPlanErr) { console.error('[generateBlocks delete]', delPlanErr); alert("Error al generar semana:\n" + delPlanErr.message); return; }
 
     // Borrar tasks antiguas vinculadas a este plan
     if (oldBlockIds.length > 0) {
@@ -228,7 +236,21 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
     }
 
     if (newBlocks.length > 0) {
-      // Insertar nuevos bloques en weekly_plans
+      // Crear primero las tasks (mismo id que el bloque), para que el task_id
+      // que referenciará weekly_plans ya exista al insertar el bloque.
+      const taskRows = newBlocks.map(b => ({
+        id: b.id,
+        titulo: b.titulo,
+        fecha: dateForDay(weekStart, b.dayOfWeek),
+        prioridad: "media",
+        completada: false,
+        comercial_id: viewUserId,
+      }));
+      const { data: insertedTasks, error: insTaskErr } = await supabase.from("tasks").insert(taskRows).select();
+      if (insTaskErr) { console.error('[generateBlocks] tasks error:', insTaskErr); alert("Error al crear tareas:\n" + insTaskErr.message); return; }
+      onAddTasks?.(insertedTasks || []);
+
+      // 2) Insertar los bloques nuevos en weekly_plans (week_start en formato YYYY-MM-DD)
       const insertPayload = newBlocks.map(b=>({
         id:b.id, comercial_id:viewUserId, week_start:weekStart,
         day_of_week:b.dayOfWeek, tipo:b.tipo,
@@ -239,36 +261,10 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
       }));
       const { error: insPlanErr } = await supabase
         .from("weekly_plans").insert(insertPayload);
-      if (insPlanErr) { alert("Error al guardar planificación:\n" + insPlanErr.message); return; }
-
-      // Crear tasks correspondientes (mismo id) para sincronizar con pestaña Tareas
-      const taskRows = newBlocks.map(b => ({
-        id: b.id,
-        titulo: b.titulo,
-        fecha: dateForDay(weekStart, b.dayOfWeek),
-        prioridad: "media",
-        completada: false,
-        comercial_id: viewUserId,
-      }));
-      const { data: insertedTasks, error: insTaskErr } = await supabase.from("tasks").insert(taskRows).select();
-      if (insTaskErr) console.error('[generateBlocks] tasks error:', insTaskErr);
-      onAddTasks?.(insertedTasks || []);
+      if (insPlanErr) { console.error('[generateBlocks insert]', insPlanErr); alert("Error al guardar planificación:\n" + insPlanErr.message); return; }
     }
 
-    // Verificar que los datos quedaron en BD leyendo de vuelta
-    const { data: savedData, error: verifyErr } = await supabase
-      .from("weekly_plans").select("*")
-      .eq("comercial_id", viewUserId).eq("week_start", weekStart);
-    if (verifyErr || !savedData?.length) {
-      alert(`⚠️ Los bloques se generaron pero no se pudieron leer de la base de datos.\nError: ${verifyErr?.message || 'SELECT devolvió vacío — revisa que RLS está desactivado en weekly_plans'}`);
-      setBlocks(newBlocks); // Mostrar en sesión actual aunque no persista
-    } else {
-      setBlocks(savedData.map(b=>({
-        id:b.id, tipo:b.tipo, dayOfWeek:b.day_of_week,
-        startTime:b.hora_inicio?.slice(0,5)||"09:00",
-        durationMinutes:b.duration_minutes, completada:b.completado, titulo:b.titulo,
-      })));
-    }
+    setBlocks(newBlocks.map(b=>({ ...b, taskId:b.id })));
   };
 
   const resetWeek = async () => {
@@ -310,24 +306,19 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
     }));
 
     const oldBlockIds = blocks.map(b => b.id);
-    await supabase.from("weekly_plans").delete()
+
+    // 1) Limpiar semana anterior
+    const { error: delPlanErr } = await supabase.from("weekly_plans").delete()
       .eq("comercial_id", viewUserId).eq("week_start", weekStart);
+    if (delPlanErr) { console.error('[applyTemplate delete]', delPlanErr); alert("Error al aplicar plantilla:\n" + delPlanErr.message); return; }
     if (oldBlockIds.length > 0) {
       await supabase.from("tasks").delete().in("id", oldBlockIds);
       onRemoveTasks?.(oldBlockIds);
     }
 
     if (newBlocks.length > 0) {
-      const { error: insPlanErr } = await supabase.from("weekly_plans").insert(newBlocks.map(b=>({
-        id:b.id, comercial_id:viewUserId, week_start:weekStart,
-        day_of_week:b.dayOfWeek, tipo:b.tipo,
-        hora_inicio:b.startTime,
-        hora_fin:minToTime(timeToMin(b.startTime)+b.durationMinutes),
-        duration_minutes:b.durationMinutes, completado:false, titulo:b.titulo,
-        task_id:b.id, notas:null,
-      })));
-      if (insPlanErr) { alert("Error al aplicar plantilla:\n" + insPlanErr.message); return; }
-
+      // Crear primero las tasks (mismo id que el bloque) para que weekly_plans.task_id
+      // referencie una fila ya existente
       const taskRows = newBlocks.map(b => ({
         id: b.id,
         titulo: b.titulo,
@@ -336,10 +327,22 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
         completada: false,
         comercial_id: viewUserId,
       }));
-      const { data: insertedTasks } = await supabase.from("tasks").insert(taskRows).select();
+      const { data: insertedTasks, error: insTaskErr } = await supabase.from("tasks").insert(taskRows).select();
+      if (insTaskErr) { console.error('[applyTemplate] tasks error:', insTaskErr); alert("Error al crear tareas:\n" + insTaskErr.message); return; }
       onAddTasks?.(insertedTasks || []);
+
+      // 2) Insertar bloques nuevos (week_start en formato YYYY-MM-DD)
+      const { error: insPlanErr } = await supabase.from("weekly_plans").insert(newBlocks.map(b=>({
+        id:b.id, comercial_id:viewUserId, week_start:weekStart,
+        day_of_week:b.dayOfWeek, tipo:b.tipo,
+        hora_inicio:b.startTime,
+        hora_fin:minToTime(timeToMin(b.startTime)+b.durationMinutes),
+        duration_minutes:b.durationMinutes, completado:false, titulo:b.titulo,
+        task_id:b.id, notas:null,
+      })));
+      if (insPlanErr) { console.error('[applyTemplate insert]', insPlanErr); alert("Error al aplicar plantilla:\n" + insPlanErr.message); return; }
     }
-    setBlocks(newBlocks);
+    setBlocks(newBlocks.map(b=>({ ...b, taskId:b.id })));
   };
 
   const deleteTemplate = async (id) => {
@@ -363,8 +366,11 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
   const toggleBlock = async (id) => {
     const b = blocks.find(b=>b.id===id); if(!b) return;
     const newVal = !b.completada;
-    await supabase.from("weekly_plans").update({ completado: newVal }).eq("id", id);
-    await supabase.from("tasks").update({ completada: newVal }).eq("id", id);
+    const { error } = await supabase.from("weekly_plans").update({ completado: newVal }).eq("id", id);
+    if (error) { console.error('[toggleBlock]', error); alert(`Error al actualizar:\n${error.message}`); return; }
+    if (b.taskId) {
+      await supabase.from("tasks").update({ completada: newVal }).eq("id", b.taskId);
+    }
     setBlocks(bs=>bs.map(b=>b.id===id?{...b,completada:newVal}:b));
     onSyncTaskCompletion?.(id, newVal);
   };

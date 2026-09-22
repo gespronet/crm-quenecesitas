@@ -22,6 +22,13 @@ const LINEAS = {
   npl:           { label:"📊 NPL",            color:"#1d4ed8", light:"#eff6ff" },
 };
 
+const COLAB_TIPOS = {
+  captador:          { label:"Captador",          color:"#059669", light:"#d1fae5" },
+  comercial_externo: { label:"Comercial externo",  color:"#2563eb", light:"#dbeafe" },
+  partner:           { label:"Partner",            color:"#7c3aed", light:"#ede9fe" },
+  asesor:            { label:"Asesor",             color:"#d97706", light:"#fef3c7" },
+};
+
 const ETAPAS = {
   alarmas:       ["prospecto","contacto","visita","propuesta","contrato","instalado","perdido"],
   energia:       ["factura_recibida","enviada_partner","opciones_recibidas","seleccionada","docs_solicitados","contratado","seguimiento"],
@@ -70,6 +77,7 @@ const toCamel = (obj) => {
     dni_cif:         "dniCif",
     codigo_postal:   "codigoPostal",
     storage_path:    "storagePath",
+    descripcion_rol: "descripcionRol",
   };
   return Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] || k, v]));
 };
@@ -89,6 +97,7 @@ const toSnake = (obj) => {
     dniCif:        "dni_cif",
     codigoPostal:  "codigo_postal",
     storagePath:   "storage_path",
+    descripcionRol:"descripcion_rol",
   };
   return Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] || k, v]));
 };
@@ -415,6 +424,8 @@ export default function App() {
   };
 
   // ── Users ─────────────────────────────────────────────────────────────────
+  // Si la tabla `users` no tiene aún la columna descripcion_rol, ejecutar manualmente:
+  // ALTER TABLE users ADD COLUMN IF NOT EXISTS descripcion_rol text;
   const addUser = async (form) => {
     const payload = toSnake({
       id:            genId(),
@@ -424,6 +435,7 @@ export default function App() {
       role:          form.role || 'comercial',
       lineaPermisos: form.lineaPermisos || ['inmobiliaria'],
       managerId:     form.managerId || null,
+      descripcionRol: form.descripcionRol || null,
     });
     const { data: rec, error } = await supabase.from('users').insert(payload).select().single();
     if (!error) setData(d => ({ ...d, users: [...d.users, toCamel(rec)] }));
@@ -432,9 +444,11 @@ export default function App() {
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (!error) setData(d => ({ ...d, users: d.users.filter(u => u.id !== id) }));
   };
-  const savePermisos = async (userId, permisos) => {
-    const { error } = await supabase.from('users').update({ linea_permisos: permisos }).eq('id', userId);
-    if (!error) setData(d => ({ ...d, users: d.users.map(u => u.id === userId ? { ...u, lineaPermisos: permisos } : u) }));
+  const savePermisos = async (userId, permisos, descripcionRol) => {
+    const payload = { linea_permisos: permisos };
+    if (descripcionRol !== undefined) payload.descripcion_rol = descripcionRol;
+    const { error } = await supabase.from('users').update(payload).eq('id', userId);
+    if (!error) setData(d => ({ ...d, users: d.users.map(u => u.id === userId ? { ...u, lineaPermisos: permisos, ...(descripcionRol !== undefined ? { descripcionRol } : {}) } : u) }));
   };
 
 
@@ -1514,32 +1528,137 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
   );
 }
 
+// Si la tabla `tasks` de Supabase no tiene aún las columnas linea/hora, ejecutar manualmente:
+// ALTER TABLE tasks ADD COLUMN IF NOT EXISTS linea text;
+// ALTER TABLE tasks ADD COLUMN IF NOT EXISTS hora time;
+
+function TaskLineaBadge({linea}) {
+  if(!linea||!LINEAS[linea]) return null;
+  const lx=LINEAS[linea];
+  return <span className="tag" style={{background:lx.light,color:lx.color,fontSize:10}}>{lx.label}</span>;
+}
+
+function TaskPrioridadBadge({prioridad}) {
+  const bg=prioridad==="alta"?"#fee2e2":prioridad==="media"?"#fffbeb":"#f3f4f6";
+  const c=prioridad==="alta"?"#dc2626":prioridad==="media"?"#d97706":"#6b7280";
+  return <span className="tag" style={{background:bg,color:c,fontSize:10}}>{prioridad}</span>;
+}
+
 function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask}) {
+  const [vistaTask,setVistaTask]=useState("hoy");
   const [filter,setFilter]=useState("semana");
+  const [fLinea,setFLinea]=useState("all");
+  const [fPrioridad,setFPrioridad]=useState("all");
+  const [fFechaDesde,setFFechaDesde]=useState("");
+  const [fFechaHasta,setFFechaHasta]=useState("");
+  const [collapsed,setCollapsed]=useState({});
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
   const {start,end}=weekRange();
+  const hoy=today();
 
-  const fil=tasks.filter(t=>
-    filter==="todas"||(filter==="pendientes"&&!t.completada)||(filter==="semana"&&!t.completada&&t.fecha>=start&&t.fecha<=end)||(filter==="completadas"&&t.completada)
-  );
   const toggleDone=id=>onToggleTask(id);
   const del=id=>{if(window.confirm("¿Eliminar?"))onDeleteTask(id);};
   const save=async()=>{if(!form.titulo?.trim())return;await onSaveTask(form,modal==="new");setModal(null);};
+  const openNew=(extra={})=>{setForm({prioridad:"media",fecha:today(),comercialId:user.id,...extra});setModal("new");};
+  const openEdit=task=>{setForm({...task});setModal("edit");};
 
-  return (
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
-        <div>
-          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Tareas</h1>
-          <p style={{color:"#9ca3af",fontSize:12}}>{tasks.filter(t=>!t.completada).length} pendientes</p>
+  // ── Vista Lista: filtros ──────────────────────────────────────────────
+  const fil=tasks.filter(t=>{
+    const passBase=filter==="todas"||(filter==="pendientes"&&!t.completada)||(filter==="semana"&&!t.completada&&t.fecha>=start&&t.fecha<=end)||(filter==="completadas"&&t.completada);
+    const passLinea=fLinea==="all"||t.linea===fLinea;
+    const passPrioridad=fPrioridad==="all"||t.prioridad===fPrioridad;
+    const passDesde=!fFechaDesde||(t.fecha&&t.fecha>=fFechaDesde);
+    const passHasta=!fFechaHasta||(t.fecha&&t.fecha<=fFechaHasta);
+    return passBase&&passLinea&&passPrioridad&&passDesde&&passHasta;
+  });
+
+  // ── Vista Hoy ──────────────────────────────────────────────────────────
+  const tasksHoy=tasks.filter(t=>t.fecha===hoy);
+  const pendHoy=tasksHoy.filter(t=>!t.completada);
+  const gruposHoy=[
+    {key:"alta",label:"🔴 Alta"},
+    {key:"media",label:"🟡 Normal"},
+    {key:"baja",label:"🔵 Baja"},
+  ].map(g=>({...g,items:tasksHoy.filter(t=>t.prioridad===g.key)}));
+  const toggleCollapsed=k=>setCollapsed(c=>({...c,[k]:!c[k]}));
+
+  const TaskRowHoy=({task})=>{
+    const contact=contacts.find(c=>c.id===task.contactId);
+    return (
+      <div className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:11,opacity:task.completada?.6:1,marginBottom:7}}>
+        <input type="checkbox" checked={task.completada} onChange={()=>toggleDone(task.id)} style={{width:16,height:16,cursor:"pointer",accentColor:BRAND,flexShrink:0}} />
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{fontSize:13,fontWeight:600,color:"#1e2a4a",textDecoration:task.completada?"line-through":"none"}}>{task.titulo}</p>
+          <div style={{display:"flex",gap:9,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+            {task.hora&&<span style={{fontSize:10,color:"#6b7280"}}>🕒 {task.hora.slice(0,5)}</span>}
+            {contact&&<span style={{fontSize:10,color:"#9ca3af"}}>👤 {contact.name}</span>}
+            <TaskLineaBadge linea={task.linea} />
+          </div>
         </div>
-        <button className="btn-p" onClick={()=>{setForm({prioridad:"media",fecha:today(),comercialId:user.id});setModal("new");}}>+ Nueva tarea</button>
+        <button className="btn-g" style={{padding:"3px 8px",fontSize:11,flexShrink:0}} onClick={()=>openEdit(task)}>✏️</button>
       </div>
-      <div className="tabs-scroll" style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
+    );
+  };
+
+  const vistaHoyContent=(
+    <div>
+      <div style={{marginBottom:14}}>
+        <h2 style={{fontSize:16,fontWeight:800,color:BRAND}}>Tareas de hoy — {new Date(hoy+"T00:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</h2>
+        <span className="tag" style={{background:pendHoy.length>0?"#fee2e2":"#d1fae5",color:pendHoy.length>0?"#dc2626":"#059669",marginTop:6,display:"inline-flex"}}>{pendHoy.length} tareas pendientes</span>
+      </div>
+      {tasksHoy.length===0?(
+        <div className="card" style={{padding:40,textAlign:"center",color:"#9ca3af"}}>
+          <p style={{fontSize:32,marginBottom:8}}>🎉</p>
+          <p style={{marginBottom:14}}>Sin tareas para hoy 🎉</p>
+          <button className="btn-p" onClick={()=>openNew({fecha:hoy})}>+ Nueva tarea</button>
+        </div>
+      ):(
+        gruposHoy.map(g=>g.items.length>0&&(
+          <div key={g.key} style={{marginBottom:12}}>
+            <button onClick={()=>toggleCollapsed(g.key)} style={{display:"flex",alignItems:"center",gap:8,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",width:"100%",textAlign:"left"}}>
+              <span style={{fontSize:13,fontWeight:800,color:"#374151"}}>{g.label}</span>
+              <span className="tag" style={{background:"#f0f3fb",color:"#6b7280"}}>{g.items.length}</span>
+              <span style={{marginLeft:"auto",fontSize:11,color:"#9ca3af"}}>{collapsed[g.key]?"▸":"▾"}</span>
+            </button>
+            {!collapsed[g.key]&&g.items.map(task=><TaskRowHoy key={task.id} task={task} />)}
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  // ── Vista Lista ────────────────────────────────────────────────────────
+  const vistaListaContent=(
+    <div>
+      <div className="tabs-scroll" style={{display:"flex",gap:7,marginBottom:12,flexWrap:"wrap"}}>
         {[["semana","📅 Esta semana"],["pendientes","⏳ Pendientes"],["completadas","✅ Completadas"],["todas","📋 Todas"]].map(([f,l])=>(
           <button key={f} className={`tab ${filter===f?"on":""}`} onClick={()=>setFilter(f)}>{l}</button>
         ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div>
+          <label className="fl">Línea</label>
+          <select className="fi" style={{maxWidth:170}} value={fLinea} onChange={e=>setFLinea(e.target.value)}>
+            <option value="all">Todas las líneas</option>
+            {Object.entries(LINEAS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="fl">Prioridad</label>
+          <select className="fi" style={{maxWidth:140}} value={fPrioridad} onChange={e=>setFPrioridad(e.target.value)}>
+            <option value="all">Todas</option>
+            <option value="alta">🔴 Alta</option><option value="media">🟡 Normal</option><option value="baja">🔵 Baja</option>
+          </select>
+        </div>
+        <div>
+          <label className="fl">Fecha desde</label>
+          <input className="fi" type="date" style={{maxWidth:150}} value={fFechaDesde} onChange={e=>setFFechaDesde(e.target.value)} />
+        </div>
+        <div>
+          <label className="fl">Fecha hasta</label>
+          <input className="fi" type="date" style={{maxWidth:150}} value={fFechaHasta} onChange={e=>setFFechaHasta(e.target.value)} />
+        </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         {fil.sort((a,b)=>{const p={alta:0,media:1,baja:2};return p[a.prioridad]-p[b.prioridad]||a.fecha.localeCompare(b.fecha);}).map(task=>{
@@ -1552,15 +1671,17 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
               <input type="checkbox" checked={task.completada} onChange={()=>toggleDone(task.id)} style={{width:16,height:16,cursor:"pointer",accentColor:BRAND,flexShrink:0}} />
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontSize:13,fontWeight:600,color:"#1e2a4a",textDecoration:task.completada?"line-through":"none"}}>{task.titulo}</p>
-                <div style={{display:"flex",gap:9,marginTop:3,flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:9,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                   <span style={{fontSize:10,color:ov?"#dc2626":tw?"#d97706":"#9ca3af",fontWeight:ov||tw?700:400}}>📅 {task.fecha}{ov?" ⚠️":tw?" 📌":""}</span>
+                  {task.hora&&<span style={{fontSize:10,color:"#6b7280"}}>🕒 {task.hora.slice(0,5)}</span>}
                   {deal&&<span style={{fontSize:10,color:"#9ca3af"}}>📋 {deal.titulo}</span>}
                   {contact&&<span style={{fontSize:10,color:"#9ca3af"}}>👤 {contact.name}</span>}
                 </div>
               </div>
-              <div style={{display:"flex",gap:4,flexShrink:0}}>
-                <span className="tag" style={{background:task.prioridad==="alta"?"#fee2e2":task.prioridad==="media"?"#fffbeb":"#f3f4f6",color:task.prioridad==="alta"?"#dc2626":task.prioridad==="media"?"#d97706":"#6b7280",fontSize:10}}>{task.prioridad}</span>
-                <button className="btn-g" style={{padding:"3px 8px",fontSize:11}} onClick={()=>{setForm({...task});setModal("edit");}}>✏️</button>
+              <div style={{display:"flex",gap:4,flexShrink:0,alignItems:"center"}}>
+                <TaskLineaBadge linea={task.linea} />
+                <TaskPrioridadBadge prioridad={task.prioridad} />
+                <button className="btn-g" style={{padding:"3px 8px",fontSize:11}} onClick={()=>openEdit(task)}>✏️</button>
                 <button className="btn-g" style={{padding:"3px 8px",fontSize:11,color:"#dc2626",borderColor:"#fecaca"}} onClick={()=>del(task.id)}>🗑️</button>
               </div>
             </div>
@@ -1568,6 +1689,66 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
         })}
         {fil.length===0&&<div className="card" style={{padding:40,textAlign:"center",color:"#9ca3af"}}><p style={{fontSize:32,marginBottom:8}}>✅</p><p>No hay tareas en esta vista</p></div>}
       </div>
+    </div>
+  );
+
+  // ── Vista Kanban ───────────────────────────────────────────────────────
+  const kanbanCols=[
+    {key:"pendiente",label:"📋 Pendiente",bg:"#f8f9fd",items:tasks.filter(t=>!t.completada&&t.fecha!==hoy)},
+    {key:"en_curso",label:"⚙️ En curso",bg:"#fffbeb",items:tasks.filter(t=>!t.completada&&t.fecha===hoy)},
+    {key:"completada",label:"✅ Completada",bg:"#ecfdf5",items:tasks.filter(t=>t.completada)},
+  ];
+
+  const vistaKanbanContent=(
+    <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:10,alignItems:"flex-start"}}>
+      {kanbanCols.map(col=>(
+        <div key={col.key} style={{flex:"0 0 260px",background:col.bg,borderRadius:12,padding:11,maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9,flexShrink:0}}>
+            <span style={{fontSize:12,fontWeight:800,color:BRAND}}>{col.label}</span>
+            <span className="tag" style={{background:BRAND_LIGHT,color:BRAND}}>{col.items.length}</span>
+          </div>
+          <div style={{overflowY:"auto",flex:1}}>
+            {col.items.map(task=>{
+              const contact=contacts.find(c=>c.id===task.contactId);
+              return (
+                <div key={task.id} className="kcard" onClick={()=>openEdit(task)} style={{cursor:"pointer"}}>
+                  <p style={{fontSize:12,fontWeight:700,color:"#1e2a4a",lineHeight:1.3,marginBottom:6,textDecoration:task.completada?"line-through":"none"}}>{task.titulo}</p>
+                  {contact&&<p style={{fontSize:11,color:"#6b7280",marginBottom:5}}>👤 {contact.name}</p>}
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
+                    <TaskLineaBadge linea={task.linea} />
+                    <TaskPrioridadBadge prioridad={task.prioridad} />
+                  </div>
+                  <p style={{fontSize:10,color:"#9ca3af"}}>📅 {task.fecha}{task.hora?` · 🕒 ${task.hora.slice(0,5)}`:""}</p>
+                </div>
+              );
+            })}
+            {col.items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#dde2f0",fontSize:20}}>○</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Tareas</h1>
+          <p style={{color:"#9ca3af",fontSize:12}}>{tasks.filter(t=>!t.completada).length} pendientes</p>
+        </div>
+        <button className="btn-p" onClick={()=>openNew()}>+ Nueva tarea</button>
+      </div>
+
+      <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
+        {[["hoy","📅 Hoy"],["lista","📋 Lista"],["kanban","🗂️ Kanban"]].map(([v,l])=>(
+          <button key={v} className={`tab ${vistaTask===v?"on":""}`} onClick={()=>setVistaTask(v)}>{l}</button>
+        ))}
+      </div>
+
+      {vistaTask==="hoy"&&vistaHoyContent}
+      {vistaTask==="lista"&&vistaListaContent}
+      {vistaTask==="kanban"&&vistaKanbanContent}
+
       {modal&&(
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="mo">
@@ -1575,9 +1756,16 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
               <div style={{gridColumn:"1 / -1"}}><label className="fl">Título *</label><input className="fi" value={form.titulo||""} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))} /></div>
               <div><label className="fl">Fecha</label><input className="fi" type="date" value={form.fecha||today()} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))} /></div>
+              <div><label className="fl">Hora</label><input className="fi" type="time" value={form.hora||""} onChange={e=>setForm(f=>({...f,hora:e.target.value}))} /></div>
               <div><label className="fl">Prioridad</label>
                 <select className="fi" value={form.prioridad||"media"} onChange={e=>setForm(f=>({...f,prioridad:e.target.value}))}>
-                  <option value="alta">🔴 Alta</option><option value="media">🟡 Media</option><option value="baja">🟢 Baja</option>
+                  <option value="alta">🔴 Alta</option><option value="media">🟡 Normal</option><option value="baja">🔵 Baja</option>
+                </select>
+              </div>
+              <div><label className="fl">Línea</label>
+                <select className="fi" value={form.linea||""} onChange={e=>setForm(f=>({...f,linea:e.target.value}))}>
+                  <option value="">Sin línea</option>
+                  {Object.entries(LINEAS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
                 </select>
               </div>
               <div><label className="fl">Contacto</label>
@@ -1605,25 +1793,38 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
 }
 
 function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}) {
+  const [teamTab,setTeamTab]=useState("interno");
   const [modal,setModal]=useState(false);
   const [form,setForm]=useState({});
   const [editP,setEditP]=useState(null);
   const [tmpP,setTmpP]=useState([]);
+  const [tmpDesc,setTmpDesc]=useState("");
   const com=users.filter(u=>u.role!=="admin");
 
   const save=async()=>{if(!form.name?.trim()||!form.email?.trim())return;await onAddUser(form);setModal(false);};
   const del=id=>{if(window.confirm("¿Eliminar?"))onDeleteUser(id);};
-  const saveP=async()=>{await onSavePermisos(editP,tmpP);setEditP(null);};
+  const saveP=async()=>{await onSavePermisos(editP,tmpP,tmpDesc);setEditP(null);};
 
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
           <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Equipo</h1>
-          <p style={{color:"#9ca3af",fontSize:12}}>{com.length} miembros</p>
+          <p style={{color:"#9ca3af",fontSize:12}}>{teamTab==="interno"?`${com.length} miembros`:"Colaboradores externos sin acceso al CRM"}</p>
         </div>
-        <button className="btn-p" onClick={()=>{setForm({role:"comercial",lineaPermisos:["inmobiliaria"]});setModal(true);}}>+ Añadir</button>
+        {teamTab==="interno"&&<button className="btn-p" onClick={()=>{setForm({role:"comercial",lineaPermisos:["inmobiliaria"]});setModal(true);}}>+ Añadir</button>}
       </div>
+
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        {[["interno","👔 Equipo interno"],["colaboradores","🤝 Colaboradores"]].map(([t,l])=>(
+          <button key={t} className={`tab ${teamTab===t?"on":""}`} onClick={()=>setTeamTab(t)}>{l}</button>
+        ))}
+      </div>
+
+      {teamTab!=="interno"?(
+        <Colaboradores />
+      ):(
+      <>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
         {com.map(u=>{
           const md=deals.filter(d=>d.comercialId===u.id&&d.etapa!=="perdido");
@@ -1644,10 +1845,11 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
                   </div>
                 </div>
                 <div style={{display:"flex",gap:4}}>
-                  <button className="btn-g" style={{padding:"3px 7px",fontSize:11}} onClick={()=>{setEditP(u.id);setTmpP(u.lineaPermisos||[]);}}>🔐</button>
+                  <button className="btn-g" style={{padding:"3px 7px",fontSize:11}} onClick={()=>{setEditP(u.id);setTmpP(u.lineaPermisos||[]);setTmpDesc(u.descripcionRol||"");}}>✏️</button>
                   <button onClick={()=>del(u.id)} style={{background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#fca5a5"}}>✕</button>
                 </div>
               </div>
+              {u.descripcionRol&&<p style={{fontSize:11,color:"#374151",marginBottom:6,fontStyle:"italic"}}>{u.descripcionRol}</p>}
               {mgr&&<p style={{fontSize:10,color:"#9ca3af",marginBottom:6}}>👤 Responsable: {mgr.name}</p>}
               {subs.length>0&&<p style={{fontSize:10,color:"#9ca3af",marginBottom:6}}>👥 Subcomerciales: {subs.map(s=>s.name).join(", ")}</p>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:10}}>
@@ -1701,17 +1903,183 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
       {editP&&(
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setEditP(null)}>
           <div className="mo">
-            <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:6}}>🔐 Permisos de línea</h2>
+            <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:6}}>✏️ Editar miembro</h2>
             <p style={{fontSize:13,color:"#6b7280",marginBottom:16}}>{users.find(u=>u.id===editP)?.name}</p>
-            <div style={{display:"flex",flexWrap:"wrap",gap:9}}>
+
+            <div style={{marginBottom:16}}>
+              <label className="fl">Descripción del rol</label>
+              <input className="fi" value={tmpDesc} onChange={e=>setTmpDesc(e.target.value)} placeholder="Ej: Comercial Alarmas y Telefonía" />
+            </div>
+
+            <label className="fl">Acceso a líneas</label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
               {Object.entries(LINEAS).map(([k,v])=>{
                 const has=tmpP.includes(k);
-                return <button key={k} onClick={()=>setTmpP(p=>has?p.filter(x=>x!==k):[...p,k])} style={{padding:"8px 16px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:has?v.color:"#dde2f0",background:has?v.light:"white",color:has?v.color:"#6b7280",transition:"all .2s"}}>{has?"✓ ":""}{v.label}</button>;
+                return (
+                  <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${has?v.color:"#dde2f0"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#6b7280",transition:"all .2s"}}>
+                    <input type="checkbox" checked={has} onChange={()=>setTmpP(p=>has?p.filter(x=>x!==k):[...p,k])} style={{width:15,height:15,accentColor:v.color,cursor:"pointer",flexShrink:0}} />
+                    {v.label}
+                  </label>
+                );
               })}
             </div>
+
             <div style={{display:"flex",gap:8,marginTop:18,justifyContent:"flex-end"}}>
               <button className="btn-g" onClick={()=>setEditP(null)}>Cancelar</button>
-              <button className="btn-p" onClick={saveP}>Guardar permisos</button>
+              <button className="btn-p" onClick={saveP}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
+// ─── Colaboradores externos ─────────────────────────────────────────────────
+// Tabla Supabase: collaborators
+// Columnas: id, nombre, tipo, email, telefono, lineas, comision_pct, estado, notas, created_at
+function Colaboradores() {
+  const [items,setItems]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [search,setSearch]=useState("");
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState({});
+
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('collaborators').select('*').order('nombre');
+    if (error) { console.error('[Colaboradores load]', error); alert(`Error al cargar colaboradores:\n${error.message}`); }
+    setItems(data||[]);
+    setLoading(false);
+  };
+
+  const openNew = () => { setForm({tipo:"captador",lineas:[],estado:"activo"}); setModal("new"); };
+  const openEdit = c => { setForm({...c, lineas:parseLinea(c.lineas)}); setModal("edit"); };
+
+  const save = async () => {
+    if (!form.nombre?.trim()) return;
+    const payload = {
+      nombre:       form.nombre.trim(),
+      tipo:         form.tipo || "captador",
+      email:        form.email || null,
+      telefono:     form.telefono || null,
+      lineas:       Array.isArray(form.lineas) ? form.lineas : [],
+      comision_pct: form.comision_pct !== "" && form.comision_pct != null ? Number(form.comision_pct) : null,
+      estado:       form.estado || "activo",
+      notas:        form.notas || null,
+    };
+    if (modal === "new") {
+      const { data:rec, error } = await supabase.from('collaborators').insert({ id:genId(), ...payload, created_at:today() }).select().single();
+      if (error) { console.error('[saveCollaborator]', error); alert(`Error al guardar colaborador:\n${error.message}`); return; }
+      if (rec) setItems(items => [...items, rec].sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")));
+    } else {
+      const { error } = await supabase.from('collaborators').update(payload).eq('id', form.id);
+      if (error) { console.error('[saveCollaborator update]', error); alert(`Error al actualizar colaborador:\n${error.message}`); return; }
+      setItems(items => items.map(i => i.id===form.id ? {...i,...payload} : i).sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")));
+    }
+    setModal(null);
+  };
+
+  const del = async id => {
+    if (!window.confirm("¿Eliminar colaborador?")) return;
+    const { error } = await supabase.from('collaborators').delete().eq('id', id);
+    if (error) { console.error('[deleteCollaborator]', error); alert(`Error al eliminar:\n${error.message}`); return; }
+    setItems(items => items.filter(i => i.id !== id));
+  };
+
+  const filtered = items.filter(c => (c.nombre||"").toLowerCase().includes(search.toLowerCase()));
+
+  if (loading) return <div style={{textAlign:"center",padding:48,color:"#9ca3af"}}><p style={{fontSize:32,marginBottom:8}}>⏳</p><p>Cargando colaboradores...</p></div>;
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
+        <p style={{color:"#9ca3af",fontSize:12}}>{filtered.length} colaboradores</p>
+        <button className="btn-p" onClick={openNew}>+ Nuevo colaborador</button>
+      </div>
+      <input className="fi" style={{maxWidth:280,marginBottom:14}} placeholder="🔍 Buscar por nombre..." value={search} onChange={e=>setSearch(e.target.value)} />
+
+      <div className="card" style={{overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr style={{background:"#f8f9fd"}}>
+              {["Nombre","Tipo","Líneas","Estado","Teléfono",""].map(h=>(
+                <th key={h} style={{padding:"9px 13px",textAlign:"left",fontSize:10,fontWeight:700,color:"#6b7280",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:".5px"}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>{filtered.map(c=>{
+              const lineas=parseLinea(c.lineas);
+              const t=COLAB_TIPOS[c.tipo]||{};
+              const activo=c.estado==="activo";
+              return (
+                <tr key={c.id} className="tr" style={{borderTop:"1px solid #f0f3fb"}}>
+                  <td style={{padding:"9px 13px",fontSize:12,fontWeight:700,color:BRAND}}>{c.nombre}</td>
+                  <td style={{padding:"9px 13px"}}><span className="tag" style={{background:t.light||"#f3f4f6",color:t.color||"#6b7280"}}>{t.label||c.tipo}</span></td>
+                  <td style={{padding:"9px 13px"}}>
+                    <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+                      {lineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color}}>{lx.label}</span>;})}
+                      {lineas.length===0&&<span style={{fontSize:11,color:"#9ca3af"}}>—</span>}
+                    </div>
+                  </td>
+                  <td style={{padding:"9px 13px"}}><span className="tag" style={{background:activo?"#d1fae5":"#f3f4f6",color:activo?"#059669":"#6b7280"}}>{activo?"● Activo":"○ Inactivo"}</span></td>
+                  <td style={{padding:"9px 13px",fontSize:12,color:"#374151"}}>{c.telefono||"—"}</td>
+                  <td style={{padding:"9px 13px"}}>
+                    <div style={{display:"flex",gap:4}}>
+                      <button className="btn-g" style={{padding:"4px 8px",fontSize:11}} onClick={()=>openEdit(c)}>✏️</button>
+                      <button className="btn-g" style={{padding:"4px 8px",fontSize:11,color:"#dc2626",borderColor:"#fecaca"}} onClick={()=>del(c.id)}>🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+          {filtered.length===0&&<p style={{textAlign:"center",padding:36,color:"#9ca3af"}}>Sin colaboradores</p>}
+        </div>
+      </div>
+
+      {modal&&(
+        <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div className="mo">
+            <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:16}}>{modal==="new"?"Nuevo colaborador":"Editar colaborador"}</h2>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+              <div style={{gridColumn:"1 / -1"}}><label className="fl">Nombre *</label><input className="fi" value={form.nombre||""} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))} /></div>
+              <div><label className="fl">Tipo</label>
+                <select className="fi" value={form.tipo||"captador"} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))}>
+                  {Object.entries(COLAB_TIPOS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+              <div><label className="fl">Estado</label>
+                <select className="fi" value={form.estado||"activo"} onChange={e=>setForm(f=>({...f,estado:e.target.value}))}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+              <div><label className="fl">Email</label><input className="fi" type="email" value={form.email||""} onChange={e=>setForm(f=>({...f,email:e.target.value}))} /></div>
+              <div><label className="fl">Teléfono</label><input className="fi" value={form.telefono||""} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} /></div>
+              <div><label className="fl">Comisión % habitual</label><input className="fi" type="number" min="0" max="100" step="0.1" value={form.comision_pct??""} onChange={e=>setForm(f=>({...f,comision_pct:e.target.value}))} /></div>
+              <div style={{gridColumn:"1 / -1"}}>
+                <label className="fl">Líneas con las que trabaja</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
+                  {Object.entries(LINEAS).map(([k,v])=>{
+                    const has=(Array.isArray(form.lineas)?form.lineas:[]).includes(k);
+                    return (
+                      <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${has?v.color:"#dde2f0"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#6b7280",transition:"all .2s"}}>
+                        <input type="checkbox" checked={has} onChange={()=>setForm(f=>{const cur=Array.isArray(f.lineas)?f.lineas:[];return {...f,lineas:has?cur.filter(x=>x!==k):[...cur,k]};})} style={{width:15,height:15,accentColor:v.color,cursor:"pointer",flexShrink:0}} />
+                        {v.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div style={{marginTop:10}}><label className="fl">Notas</label><textarea className="fi" rows={2} value={form.notas||""} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} /></div>
+            <div style={{display:"flex",gap:8,marginTop:16,justifyContent:"flex-end"}}>
+              <button className="btn-g" onClick={()=>setModal(null)}>Cancelar</button>
+              <button className="btn-p" onClick={save}>Guardar</button>
             </div>
           </div>
         </div>
