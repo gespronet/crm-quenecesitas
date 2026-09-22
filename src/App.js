@@ -5,7 +5,10 @@ import { ContactQuotes } from "./Productos";
 import EnergiaSection from "./EnergiaSection";
 import AlarmaSection from "./AlarmaSection";
 import Inmobiliaria from "./Inmobiliaria";
+import VentaDirecta from "./VentaDirecta";
 import MiSemana from './MiSemana';
+import NPL from './NPL';
+import TelefoniaSection from './TelefoniaSection';
 
 const BRAND = "#002292";
 const BRAND_LIGHT = "#e6eaf8";
@@ -558,11 +561,11 @@ export default function App() {
           {view==="subastas" && null}
           {view==="inmobiliaria" && <Inmobiliaria user={user} contacts={data.contacts} users={data.users} />}
           {view==="misemana"     && <MiSemana user={user} />}
-          {view==="venta_directa"&& <div style={{padding:32,color:"#0891b2",fontWeight:700,fontSize:18}}>🏷️ Venta Directa — próximamente</div>}
-          {view==="npl"          && <div style={{padding:32,color:"#1d4ed8",fontWeight:700,fontSize:18}}>📊 NPL — próximamente</div>}
-          {view==="alarmas"      && <div style={{padding:32,color:"#dc2626",fontWeight:700,fontSize:18}}>🔐 Alarmas — próximamente</div>}
-          {view==="energia"      && <div style={{padding:32,color:"#d97706",fontWeight:700,fontSize:18}}>⚡ Energía — próximamente</div>}
-          {view==="telefonia"    && <div style={{padding:32,color:"#7c3aed",fontWeight:700,fontSize:18}}>📱 Telefonía — próximamente</div>}
+          {view==="venta_directa"&& <VentaDirecta user={user} users={data.users} contacts={data.contacts} />}
+          {view==="npl"          && <NPL user={user} users={data.users} />}
+          {view==="alarmas"      && <AlarmaSection user={user} users={data.users} contacts={data.contacts} />}
+          {view==="energia"      && <EnergiaSection user={user} users={data.users} contacts={data.contacts} />}
+          {view==="telefonia"    && <TelefoniaSection user={user} users={data.users} contacts={data.contacts} />}
           {view==="team"      && <Team
             users={data.users}
             contacts={data.contacts}
@@ -1113,8 +1116,6 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             ["documentos","📎 Documentos"],
             ["presupuestos","💰 Presupuestos"],
             ["acciones","🎯 Próximas acciones"],
-            ...(contactLineas.includes("alarmas")?[["alarmas","🔐 Alarmas"]]:[]),
-            ...(contactLineas.includes("energia")?[["energia","⚡ Energía"]]:[]),
           ].map(([t,l])=>(
             <button key={t} className={`tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{l}</button>
           ))}
@@ -1173,13 +1174,6 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
             </div>
           </div>
         )}
-        {tab==="alarmas"&&contactLineas.includes("alarmas")&&(
-          <AlarmaSection contact={contact} user={user} />
-        )}
-        {tab==="energia"&&contactLineas.includes("energia")&&(
-          <EnergiaSection contact={contact} user={user} users={users} />
-        )}
-
         {/* Modal enviar email */}
         {showEmail&&(
           <div className="mb" onClick={e=>e.target===e.currentTarget&&setShowEmail(false)}>

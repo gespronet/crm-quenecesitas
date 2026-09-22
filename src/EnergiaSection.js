@@ -1,1537 +1,711 @@
 import { useState, useEffect } from 'react';
-import { supabase, sanitizeFileName, compressFileIfPdf } from './utils/supabase';
+import { supabase } from './utils/supabase';
 
-const BREVO_API_KEY = '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';
-const PARTNER_EMAIL = 'piandorenergia@corporacionlexgal.com';
-const INTERNAL_EMAIL = 'anovo@quenecesitashoy.es';
 const BRAND = '#002292';
-const TARIFAS = ['2.0TD', '3.0TD', '6.1TD', 'Otra'];
 
-const downloadBase64Pdf = (base64, fileName) => {
-  try {
-    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    alert('Error al descargar: ' + e.message);
-  }
+const ESTADOS_ENERGIA = {
+  factura_recibida:   { label:'Factura recibida',    color:'#f59e0b', bg:'#fffbeb' },
+  enviada_partner:    { label:'Enviada al partner',   color:'#3b82f6', bg:'#eff6ff' },
+  opciones_recibidas: { label:'Opciones recibidas',   color:'#8b5cf6', bg:'#f5f3ff' },
+  seleccionada:       { label:'Seleccionada',         color:'#06b6d4', bg:'#ecfeff' },
+  docs_solicitados:   { label:'Docs solicitados',     color:'#f97316', bg:'#fff7ed' },
+  contratado:         { label:'Contratado ✓',         color:'#10b981', bg:'#d1fae5' },
+  seguimiento:        { label:'Seguimiento',          color:'#059669', bg:'#d1fae5' },
 };
 
-const compressPdfBase64 = async (base64) => {
-  if (!base64 || base64.length < 1_400_000) return base64; // < ~1MB, no compress
-  try {
-    const { PDFDocument } = await import('pdf-lib');
-    const pdfBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-    const compressed = await pdfDoc.save({ useObjectStreams: true });
-    let binary = '';
-    for (let i = 0; i < compressed.length; i++) binary += String.fromCharCode(compressed[i]);
-    return btoa(binary);
-  } catch (e) {
-    console.warn('PDF compression failed, using original:', e.message);
-    return base64;
-  }
-};
+const TARIFAS = ['2.0TD','3.0TD','6.1TD','otro'];
 
-const fileToBase64 = (file) => new Promise((res, rej) => {
-  const reader = new FileReader();
-  reader.onload = () => res(reader.result.split(',')[1]);
-  reader.onerror = rej;
-  reader.readAsDataURL(file);
-});
+const DOCS_CHECKLIST = [
+  'DNI/NIE del titular',
+  'IBAN bancario',
+  'Autorización cambio de comercializadora',
+  'Última factura (si no se aportó antes)',
+];
+
+const EMPTY_OPCION = { comercializadora:'', precio_kwh:'', ahorro_estimado:'', notas:'', seleccionada:false };
 
 const EMPTY_FORM = {
-  nombre: '', cups: '', direccion: '', localidad: '',
-  codigo_postal: '', provincia: '', tarifa: '',
-  potencia_contratada: '', comercializadora_actual: '',
-  factura_1_nombre: null, factura_1_base64: null,
-  factura_2_nombre: null, factura_2_base64: null,
+  contact_id:'', cups:'', tarifa_actual:'2.0TD', comercializadora_actual:'',
+  consumo_anual_kwh:'', importe_factura_eur:'', fecha_factura:'',
+  comercial_id:'', notas:'',
 };
 
-const DOCS_POR_PERFIL = {
-  particular: [
-    'DNI (foto dos caras carnet)',
-    'Una de las tres últimas facturas',
-    'Número de cuenta bancaria',
-    'Correo electrónico',
-    'Móvil',
-  ],
-  autonomo: [
-    'DNI (foto dos caras carnet)',
-    'Una de las tres últimas facturas',
-    'Número de cuenta bancaria + Certificado bancario',
-    'Correo electrónico',
-    'Móvil',
-    'Último recibo de autónomo',
-  ],
-  pyme: [
-    'DNI del firmante + documento que acredite firma',
-    'Una de las tres últimas facturas',
-    'Número de cuenta bancaria (certificado bancario)',
-    'Correo electrónico',
-    'Móvil',
-    'CIF (documento de hacienda)',
-  ],
-};
+function isAdminSocio(u) { return ['admin','socio'].includes(u.role); }
+function genId() { return crypto.randomUUID(); }
+function today() { return new Date().toISOString().split('T')[0]; }
 
-const PERFIL_LABELS = {
-  particular: 'Particular',
-  autonomo: 'Autónomo',
-  pyme: 'Pyme / Empresa',
-};
+function fmt(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(Number(v));
+}
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  d.setHours(0,0,0,0); now.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
 
-export default function EnergiaSection({ contact, user, users }) {
-  const [points, setPoints] = useState([]);
-  const [contractsByPointId, setContractsByPointId] = useState({});
-  const [docsByContractId, setDocsByContractId] = useState({});
-  const [loaded, setLoaded] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingPoint, setEditingPoint] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [uploading, setUploading] = useState({ 1: false, 2: false });
-  const [saving, setSaving] = useState(false);
-  const [showEnviarModal, setShowEnviarModal] = useState(null);
-  const [mensaje, setMensaje] = useState('');
-  const [sending, setSending] = useState(false);
-  const [subTab, setSubTab] = useState('puntos');
+function renewalBadge(dateStr) {
+  const dias = daysUntil(dateStr);
+  if (dias === null) return null;
+  if (dias < 0) return { label:`⚠️ Vencido hace ${Math.abs(dias)} días`, color:'#dc2626', bg:'#fee2e2' };
+  if (dias < 90) return { label:`⚠️ Renovación en ${dias} días`, color:'#dc2626', bg:'#fee2e2' };
+  if (dias < 180) return { label:`Revisar en ${dias} días`, color:'#d97706', bg:'#fef3c7' };
+  return null;
+}
 
-  useEffect(() => { loadData(); }, [contact.id]); // eslint-disable-line react-hooks/exhaustive-deps
+function selSt() {
+  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+}
 
-  const loadData = async () => {
-    setLoaded(false);
-    const { data: spData } = await supabase
-      .from('supply_points')
-      .select('*')
-      .eq('contact_id', contact.id)
-      .order('created_at', { ascending: true });
+// ─── Main ────────────────────────────────────────────────────────────────────
 
-    let pts = spData || [];
+export default function EnergiaSection({ user, users, contacts }) {
+  const [procesos, setProcesos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({ estado:'', comercial:'' });
 
-    // Migración automática desde energy_invoices si no hay puntos aún
-    if (pts.length === 0) {
-      const { data: inv } = await supabase
-        .from('energy_invoices')
-        .select('*')
-        .eq('contact_id', contact.id)
-        .order('created_at', { ascending: true });
+  const admin = isAdminSocio(user);
 
-      if (inv && inv.length > 0) {
-        const toInsert = inv.map(r => ({
-          id: crypto.randomUUID(),
-          contact_id: r.contact_id,
-          nombre: 'Principal',
-          comercial_id: r.comercial_id,
-          factura_1_nombre: r.factura_1_nombre,
-          factura_1_base64: r.factura_1_base64,
-          factura_2_nombre: r.factura_2_nombre,
-          factura_2_base64: r.factura_2_base64,
-          enviado_partner: r.enviado_partner,
-          fecha_envio: r.fecha_envio,
-          mensaje: r.mensaje,
-          created_at: r.created_at,
-        }));
-        const { data: migrated } = await supabase.from('supply_points').insert(toInsert).select();
-        pts = migrated || [];
-      }
-    }
+  useEffect(() => { load(); }, []); // eslint-disable-line
 
-    setPoints(pts);
-
-    // Cargar contratos de energía
-    if (pts.length > 0) {
-      const { data: contractsData } = await supabase
-        .from('energy_contracts')
-        .select('*')
-        .eq('contact_id', contact.id);
-
-      const cbp = {};
-      if (contractsData) {
-        contractsData.forEach(c => { cbp[c.supply_point_id] = c; });
-      }
-      setContractsByPointId(cbp);
-
-      const contractIds = contractsData ? contractsData.map(c => c.id) : [];
-      if (contractIds.length > 0) {
-        const { data: docsData } = await supabase
-          .from('energy_contract_docs')
-          .select('*')
-          .in('contract_id', contractIds)
-          .order('created_at', { ascending: true });
-
-        const dbc = {};
-        if (docsData) {
-          docsData.forEach(d => {
-            if (!dbc[d.contract_id]) dbc[d.contract_id] = [];
-            dbc[d.contract_id].push(d);
-          });
-        }
-        setDocsByContractId(dbc);
-      } else {
-        setDocsByContractId({});
-      }
-    } else {
-      setContractsByPointId({});
-      setDocsByContractId({});
-    }
-
-    setLoaded(true);
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('energia_procesos')
+      .select('*, contacts(name, phone), users(name)')
+      .order('created_at', { ascending:false });
+    if (error) console.log('[energia_procesos] error:', error);
+    setProcesos(data || []);
+    setLoading(false);
   };
 
-  // ── Add / Edit modal ─────────────────────────────────────────────────────
-
-  const openAdd = () => {
-    setEditingPoint(null);
-    setForm(EMPTY_FORM);
-    setUploading({ 1: false, 2: false });
-    setShowAddModal(true);
-  };
-
-  const openEdit = (pt) => {
-    setEditingPoint(pt);
-    setForm({
-      nombre: pt.nombre || '',
-      cups: pt.cups || '',
-      direccion: pt.direccion || '',
-      localidad: pt.localidad || '',
-      codigo_postal: pt.codigo_postal || '',
-      provincia: pt.provincia || '',
-      tarifa: pt.tarifa || '',
-      potencia_contratada: pt.potencia_contratada || '',
-      comercializadora_actual: pt.comercializadora_actual || '',
-      factura_1_nombre: pt.factura_1_nombre || null,
-      factura_1_base64: pt.factura_1_base64 || null,
-      factura_2_nombre: pt.factura_2_nombre || null,
-      factura_2_base64: pt.factura_2_base64 || null,
+  const handleSaved = (rec) => {
+    setProcesos(ps => {
+      const idx = ps.findIndex(p => p.id === rec.id);
+      return idx >= 0 ? ps.map(p => p.id === rec.id ? rec : p) : [rec, ...ps];
     });
-    setUploading({ 1: false, 2: false });
-    setShowAddModal(true);
+    setSelectedId(rec.id);
   };
 
-  const handleFormChange = (key, val) => setForm(f => ({ ...f, [key]: val }));
-
-  const handleFormUpload = async (num, file) => {
-    if (!file) return;
-    if (file.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF'); return; }
-    setUploading(u => ({ ...u, [num]: true }));
-    try {
-      const b64 = await fileToBase64(file);
-      setForm(f => ({ ...f, [`factura_${num}_nombre`]: file.name, [`factura_${num}_base64`]: b64 }));
-    } catch (e) {
-      alert(`Error al leer el archivo: ${e.message}`);
-    } finally {
-      setUploading(u => ({ ...u, [num]: false }));
-    }
+  const handleDeleted = (id) => {
+    setProcesos(ps => ps.filter(p => p.id !== id));
+    setSelectedId(null);
   };
 
-  const handleSave = async () => {
-    if (!form.nombre.trim()) { alert('El nombre identificativo es obligatorio'); return; }
-    if (!form.direccion.trim()) { alert('La dirección es obligatoria'); return; }
-    if (!form.factura_1_nombre || !form.factura_2_nombre) { alert('Debes subir las dos facturas'); return; }
-    if (form.cups.trim() && form.cups.trim().length !== 20 && form.cups.trim().length !== 22) {
-      alert('El CUPS debe tener 20 caracteres'); return;
+  const visibles = admin ? procesos : procesos.filter(p => p.comercial_id === user.id);
+
+  const filtered = visibles.filter(p => {
+    if (filters.estado && p.estado !== filters.estado) return false;
+    if (filters.comercial && p.comercial_id !== filters.comercial) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = [p.contacts?.name, p.comercializadora_actual].filter(Boolean).some(v => v.toLowerCase().includes(q));
+      if (!hay) return false;
     }
+    return true;
+  });
 
-    setSaving(true);
-    const bothInvoices = !!(form.factura_1_nombre && form.factura_2_nombre);
+  const total = visibles.length;
+  const contratados = visibles.filter(p => p.estado === 'contratado').length;
+  const enSeguimiento = visibles.filter(p => p.estado === 'seguimiento').length;
+  const proximasRenovaciones = visibles.filter(p => {
+    if (!['contratado','seguimiento'].includes(p.estado)) return false;
+    const dias = daysUntil(p.fecha_vencimiento);
+    return dias !== null && dias < 90;
+  }).length;
 
-    // Calcular nuevo estado_estudio sin regresar si ya estaba enviado
-    const prevEstado = editingPoint?.estado_estudio;
-    const prevEnviado = editingPoint?.enviado_partner;
-    let nuevoEstado;
-    if (prevEstado === 'estudio_enviado' || prevEnviado) {
-      nuevoEstado = 'estudio_enviado';
-    } else if (bothInvoices) {
-      nuevoEstado = 'estudio_pendiente';
-    } else {
-      nuevoEstado = 'pendiente_subida';
-    }
+  const selected = procesos.find(p => p.id === selectedId) || null;
 
-    const payload = {
-      contact_id: contact.id,
-      comercial_id: user.id,
-      nombre: form.nombre.trim(),
-      cups: form.cups.trim().toUpperCase() || null,
-      direccion: form.direccion.trim() || null,
-      localidad: form.localidad.trim() || null,
-      codigo_postal: form.codigo_postal.trim() || null,
-      provincia: form.provincia.trim() || null,
-      tarifa: form.tarifa || null,
-      potencia_contratada: form.potencia_contratada || null,
-      comercializadora_actual: form.comercializadora_actual.trim() || null,
-      factura_1_nombre: form.factura_1_nombre,
-      factura_1_base64: form.factura_1_base64,
-      factura_2_nombre: form.factura_2_nombre,
-      factura_2_base64: form.factura_2_base64,
-      estado_estudio: nuevoEstado,
-    };
-
-    let error;
-    if (editingPoint) {
-      ({ error } = await supabase.from('supply_points').update(payload).eq('id', editingPoint.id));
-    } else {
-      ({ error } = await supabase.from('supply_points').insert({ id: crypto.randomUUID(), ...payload }));
-    }
-
-    if (error) { alert(`Error al guardar: ${error.message}`); setSaving(false); return; }
-
-    // Disparar notificación interna solo la primera vez que se suben las dos facturas
-    const hadBothBefore = !!(editingPoint?.factura_1_nombre && editingPoint?.factura_2_nombre);
-    if (bothInvoices && !hadBothBefore) {
-      const dirPunto = [form.direccion.trim(), form.localidad.trim(), form.provincia.trim()].filter(Boolean).join(', ') || '—';
-      const cupsLine = form.cups.trim() ? `CUPS: ${form.cups.trim().toUpperCase()}` : null;
-      try {
-        await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
-          headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
-          body: JSON.stringify({
-            sender: { name: user.name, email: user.email },
-            to: [{ email: INTERNAL_EMAIL }],
-            subject: `Nuevo estudio pendiente — ${contact.name}`,
-            textContent: [
-              `Cliente: ${contact.name}`,
-              `Teléfono: ${contact.phone || '—'}`,
-              `Comercial: ${user.name}`,
-              `Punto de suministro: ${form.nombre.trim()}`,
-              cupsLine,
-              `Dirección: ${dirPunto}`,
-            ].filter(Boolean).join('\n'),
-          }),
-        });
-      } catch (e) {
-        console.warn('Error enviando email interno:', e.message);
-      }
-
-      // Mover/crear deal a "Solicitar Estudio"
-      const hoy = new Date().toISOString().split('T')[0];
-      const { data: deals } = await supabase.from('deals').select('id').eq('contact_id', contact.id).eq('linea', 'energia').limit(1);
-      if (deals && deals.length > 0) {
-        await supabase.from('deals').update({ etapa: 'solicitar estudio', updated_at: hoy }).eq('id', deals[0].id);
-      } else {
-        await supabase.from('deals').insert({
-          id: crypto.randomUUID(),
-          contact_id: contact.id,
-          linea: 'energia',
-          etapa: 'solicitar estudio',
-          comercial_id: user.id,
-          titulo: contact.name,
-          valor: 0,
-          updated_at: hoy,
-        });
-      }
-    }
-
-    setSaving(false);
-    setShowAddModal(false);
-    await loadData();
-  };
-
-  const handleDeletePoint = async (pt) => {
-    if (!window.confirm(`¿Eliminar el punto "${pt.nombre}"? Esta acción no se puede deshacer.`)) return;
-    await supabase.from('supply_points').delete().eq('id', pt.id);
-    await loadData();
-  };
-
-  // ── Enviar facturas al partner (Fase 1) ──────────────────────────────────
-
-  const openEnviarModal = (pt) => {
-    setShowEnviarModal(pt);
-    setMensaje(
-      `Estimados, adjunto les envío las facturas de consumo eléctrico del cliente ${contact.name} para su estudio y propuesta de ahorro. Quedamos a su disposición. Un saludo.`
+  if (selected) {
+    return (
+      <FichaProceso proceso={selected} user={user} users={users} contacts={contacts} admin={admin}
+        onBack={() => setSelectedId(null)} onSaved={handleSaved} onDeleted={handleDeleted} />
     );
-  };
+  }
 
-  const handleEnviar = async () => {
-    const pt = showEnviarModal;
-    setSending(true);
-    try {
-      const dirCliente = [contact.direccion, contact.localidad, contact.provincia].filter(Boolean).join(', ') || '—';
-      const dirPunto = [pt.direccion, pt.localidad, pt.provincia].filter(Boolean).join(', ') || '—';
-      const bodyText = [
-        mensaje,
-        '',
-        'Datos del cliente:',
-        `Nombre: ${contact.name}`,
-        `Teléfono: ${contact.phone || '—'}`,
-        `Email: ${contact.email || '—'}`,
-        `Dirección: ${dirCliente}`,
-        '',
-        `Punto de suministro: ${pt.nombre}`,
-        `CUPS: ${pt.cups || '—'}`,
-        `Dirección: ${dirPunto}`,
-        `Tarifa: ${pt.tarifa || '—'}`,
-        `Potencia contratada: ${pt.potencia_contratada ? `${pt.potencia_contratada} kW` : '—'}`,
-        `Comercializadora actual: ${pt.comercializadora_actual || '—'}`,
-      ].join('\n');
-
-      // Comprimir PDFs antes de adjuntar si superan 1 MB
-      const [f1b64, f2b64] = await Promise.all([
-        compressPdfBase64(pt.factura_1_base64),
-        compressPdfBase64(pt.factura_2_base64),
-      ]);
-
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'api-key': BREVO_API_KEY,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: user.name, email: user.email },
-          to: [{ email: PARTNER_EMAIL }],
-          subject: `Facturas energía — ${contact.name}`,
-          textContent: bodyText,
-          attachment: [
-            { content: f1b64, name: pt.factura_1_nombre },
-            { content: f2b64, name: pt.factura_2_nombre },
-          ],
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(JSON.stringify(errData));
-      }
-
-      const fechaEnvio = new Date().toISOString();
-      await supabase.from('supply_points')
-        .update({ enviado_partner: true, fecha_envio: fechaEnvio, mensaje, comercial_id: user.id, estado_estudio: 'estudio_enviado' })
-        .eq('id', pt.id);
-
-      await supabase.from('interactions').insert({
-        id: crypto.randomUUID(),
-        contact_id: contact.id,
-        tipo: 'email',
-        fecha: new Date().toISOString().split('T')[0],
-        descripcion: `Facturas de energía enviadas al partner — punto "${pt.nombre}"${pt.cups ? ` (CUPS: ${pt.cups})` : ''}. ${mensaje}`,
-        comercial_id: user.id,
-      });
-
-      const hoy = new Date().toISOString().split('T')[0];
-      const { data: deals } = await supabase.from('deals').select('id').eq('contact_id', contact.id).eq('linea', 'energia').limit(1);
-      if (deals && deals.length > 0) {
-        await supabase.from('deals').update({ etapa: 'análisis', updated_at: hoy }).eq('id', deals[0].id);
-      } else {
-        await supabase.from('deals').insert({
-          id: crypto.randomUUID(),
-          contact_id: contact.id,
-          linea: 'energia',
-          etapa: 'análisis',
-          comercial_id: user.id,
-          titulo: contact.name,
-          valor: 0,
-          updated_at: hoy,
-        });
-      }
-
-      await loadData();
-      setShowEnviarModal(null);
-      alert('Facturas enviadas correctamente al partner');
-    } catch (e) {
-      alert(`Error al enviar: ${e.message}`);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  // ── Aprobar estudio (Fase 1 → Fase 2) ────────────────────────────────────
-
-  const handleAprobarEstudio = async (pt) => {
-    if (!window.confirm('¿El cliente ha aprobado el estudio?')) return;
-
-    const hoy = new Date().toISOString();
-
-    // 1. Convertir contacto a 'cliente'
-    await supabase.from('contacts').update({ tipo: 'cliente' }).eq('id', contact.id);
-
-    // 2. Mover deal a 'Contratación'
-    const { data: deals } = await supabase.from('deals').select('id').eq('contact_id', contact.id).eq('linea', 'energia').limit(1);
-    if (deals && deals.length > 0) {
-      await supabase.from('deals').update({ etapa: 'contratación', updated_at: hoy.split('T')[0] }).eq('id', deals[0].id);
-    }
-
-    // 3. Crear o actualizar registro en energy_contracts
-    const existingContract = contractsByPointId[pt.id];
-    if (!existingContract) {
-      await supabase.from('energy_contracts').insert({
-        id: crypto.randomUUID(),
-        contact_id: contact.id,
-        supply_point_id: pt.id,
-        estudio_aprobado: true,
-        fecha_aprobacion: hoy,
-        comercial_id: user.id,
-        created_at: hoy,
-      });
-    } else {
-      await supabase.from('energy_contracts').update({
-        estudio_aprobado: true,
-        fecha_aprobacion: hoy,
-      }).eq('id', existingContract.id);
-    }
-
-    await loadData();
-  };
-
-  // ── Render ───────────────────────────────────────────────────────────────
-
-  if (!loaded) return <p style={{ color: '#9ca3af', fontSize: 13, padding: '12px 0' }}>Cargando...</p>;
+  if (selectedId === 'new') {
+    return (
+      <FichaProceso proceso={null} user={user} users={users} contacts={contacts} admin={admin}
+        onBack={() => setSelectedId(null)} onSaved={handleSaved} onDeleted={handleDeleted} />
+    );
+  }
 
   return (
     <div>
-      {/* ── Subpestañas ── */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '2px solid #dde2f0' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
+        <div>
+          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>⚡ Energía</h1>
+          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} procesos</p>
+        </div>
+        <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo proceso</button>
+      </div>
+
+      {/* Métricas rápidas */}
+      <div className="stats-grid">
         {[
-          ['puntos', '📍 Puntos de suministro'],
-          ['estudios', '📊 Historial de estudios'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setSubTab(key)}
-            style={{
-              padding: '8px 18px', fontSize: 12, fontWeight: 700, border: 'none',
-              borderBottom: subTab === key ? `3px solid ${BRAND}` : '3px solid transparent',
-              background: 'transparent', color: subTab === key ? BRAND : '#9ca3af',
-              cursor: 'pointer', marginBottom: -2,
-            }}
-          >
-            {label}
+          { l:'Total procesos', v:total, i:'⚡', c:BRAND },
+          { l:'Contratados', v:contratados, i:'✅', c:'#10b981' },
+          { l:'En seguimiento', v:enSeguimiento, i:'🔔', c:'#059669' },
+          { l:'Próximas renovaciones', v:proximasRenovaciones, i:'⚠️', c:'#d97706' },
+        ].map(s => (
+          <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
+            <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
+            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Barlow Condensed',sans-serif" }}>{s.v}</div>
+            <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Buscador y filtros */}
+      <div style={{ display:'flex', gap:10, marginBottom:18, flexWrap:'wrap' }}>
+        <input className="fi" placeholder="Buscar por cliente o comercializadora..." value={search}
+          onChange={e => setSearch(e.target.value)} style={{ maxWidth:280 }} />
+        <select value={filters.estado} onChange={e => setFilters(f=>({...f,estado:e.target.value}))} style={selSt()}>
+          <option value="">Todos los estados</option>
+          {Object.entries(ESTADOS_ENERGIA).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        {admin && (
+          <select value={filters.comercial} onChange={e => setFilters(f=>({...f,comercial:e.target.value}))} style={selSt()}>
+            <option value="">Todos los comerciales</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        )}
+        {(search||filters.estado||filters.comercial) && (
+          <button onClick={() => { setSearch(''); setFilters({estado:'',comercial:''}); }}
+            style={{ ...selSt(), color:'#dc2626', borderColor:'#fee2e2', background:'#fef2f2' }}>
+            ✕ Limpiar
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+          {visibles.length === 0 ? 'No hay procesos. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
+        </div>
+      ) : (
+        <div className="card" style={{ overflow:'hidden' }}>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'#f8f9fd' }}>
+                  {['Cliente','Comercializadora actual','Importe factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial',''].map(h => (
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => {
+                  const estado = ESTADOS_ENERGIA[p.estado] || ESTADOS_ENERGIA.factura_recibida;
+                  const com = users.find(u => u.id === p.comercial_id);
+                  const dias = daysUntil(p.fecha_vencimiento);
+                  const venceProximo = p.estado === 'contratado' || p.estado === 'seguimiento' ? (dias !== null && dias < 90) : false;
+                  return (
+                    <tr key={p.id} className="tr" style={{ borderTop:'1px solid #f0f3fb', cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
+                      <td style={{ padding:'9px 13px', fontSize:13, fontWeight:700, color:BRAND }}>{p.contacts?.name || 'Sin cliente'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.comercializadora_actual || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(p.importe_factura_eur)}</td>
+                      <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
+                        <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
+                      </td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.estado === 'contratado' || p.estado === 'seguimiento' ? (p.comercializadora_nueva || '—') : '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, whiteSpace:'nowrap', color: venceProximo ? '#dc2626' : '#374151', fontWeight: venceProximo ? 700 : 400 }}>
+                        {(p.estado === 'contratado' || p.estado === 'seguimiento') ? (p.fecha_vencimiento || '—') : '—'}
+                      </td>
+                      <td style={{ padding:'9px 13px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
+                      <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                          <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setSelectedId(p.id)}>📂 Abrir</button>
+                          {admin && (
+                            <button onClick={() => quickDelete(p)}
+                              style={{ padding:'5px 9px', borderRadius:7, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                              🗑
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  async function quickDelete(p) {
+    if (!window.confirm(`¿Eliminar el proceso de "${p.contacts?.name || 'este cliente'}"? No se puede deshacer.`)) return;
+    const { error } = await supabase.from('energia_procesos').delete().eq('id', p.id);
+    if (error) { alert(`Error: ${error.message}`); return; }
+    handleDeleted(p.id);
+  }
+}
+
+// ─── Ficha de proceso (4 pestañas) ───────────────────────────────────────────
+
+function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, onDeleted }) {
+  const isNew = !proceso;
+  const [tab, setTab] = useState('factura');
+  const [proc, setProc] = useState(proceso);
+  const canEdit = isNew || admin || proc?.comercial_id === user.id;
+
+  const handleSaved = (rec) => { setProc(rec); onSaved(rec); if (isNew) setTab('factura'); };
+
+  const TABS = [
+    { id:'factura',      label:'📄 Factura' },
+    { id:'opciones',     label:'📊 Opciones del partner', disabled: isNew },
+    { id:'docs',         label:'📋 Documentación',        disabled: isNew },
+    { id:'seguimiento',  label:'🔔 Seguimiento',          disabled: isNew || !['contratado','seguimiento'].includes(proc?.estado) },
+  ];
+
+  const estado = proc ? (ESTADOS_ENERGIA[proc.estado] || ESTADOS_ENERGIA.factura_recibida) : null;
+
+  return (
+    <div>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
+        <button onClick={onBack}
+          style={{ background:'none', border:'1.5px solid #dde2f0', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#374151' }}>
+          ← Volver
+        </button>
+        <div style={{ flex:1, minWidth:200 }}>
+          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
+            {isNew ? 'Nuevo proceso' : (proc.contacts?.name || 'Ficha de proceso')}
+          </h1>
+          {proc && (
+            <p style={{ fontSize:12, color:'#9ca3af' }}>
+              {proc.comercializadora_actual || 'Sin comercializadora actual'}
+              {estado && <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Pestañas */}
+      <div className="tabs-scroll" style={{ display:'flex', gap:8, marginBottom:22, flexWrap:'wrap' }}>
+        {TABS.map(t => (
+          <button key={t.id} className={`tab ${tab===t.id?'on':''}`}
+            disabled={t.disabled}
+            onClick={() => !t.disabled && setTab(t.id)}
+            style={t.disabled ? { opacity:0.45, cursor:'not-allowed' } : undefined}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* ── Subpestaña: Puntos de suministro ── */}
-      {subTab === 'puntos' && (
-        <div>
-          {points.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9ca3af', fontSize: 13 }}>
-              No hay puntos de suministro. Añade el primero.
-            </div>
-          )}
-
-          {points.map(pt => {
-            const contract = contractsByPointId[pt.id] || null;
-            const contractDocs = contract ? (docsByContractId[contract.id] || []) : [];
-            return (
-              <SupplyPointCard
-                key={pt.id}
-                pt={pt}
-                users={users}
-                contact={contact}
-                user={user}
-                contract={contract}
-                contractDocs={contractDocs}
-                onEdit={() => openEdit(pt)}
-                onDelete={() => handleDeletePoint(pt)}
-                onEnviar={() => openEnviarModal(pt)}
-                onAprobar={() => handleAprobarEstudio(pt)}
-                onRefresh={loadData}
-              />
-            );
-          })}
-
-          <button
-            onClick={openAdd}
-            style={{
-              width: '100%', padding: '10px 0', borderRadius: 10,
-              border: `2px dashed ${BRAND}`, fontSize: 14, fontWeight: 700,
-              cursor: 'pointer', background: '#f0f4ff', color: BRAND,
-              marginTop: points.length > 0 ? 10 : 0,
-            }}
-          >
-            Añadir punto de suministro
-          </button>
-
-          {showAddModal && (
-            <AddEditModal
-              editingPoint={editingPoint}
-              form={form}
-              uploading={uploading}
-              saving={saving}
-              onClose={() => setShowAddModal(false)}
-              onChange={handleFormChange}
-              onUpload={handleFormUpload}
-              onSave={handleSave}
-            />
-          )}
-
-          {showEnviarModal && (
-            <EnviarModal
-              pt={showEnviarModal}
-              contact={contact}
-              mensaje={mensaje}
-              sending={sending}
-              onClose={() => setShowEnviarModal(null)}
-              onMensajeChange={setMensaje}
-              onEnviar={handleEnviar}
-            />
-          )}
-        </div>
+      {tab === 'factura' && (
+        <TabFactura proceso={proc} isNew={isNew} user={user} users={users} contacts={contacts} admin={admin} canEdit={canEdit}
+          onSaved={handleSaved} onDeleted={onDeleted} />
       )}
-
-      {/* ── Subpestaña: Historial de estudios ── */}
-      {subTab === 'estudios' && (
-        <StudiesSection contact={contact} user={user} users={users} points={points} />
+      {tab === 'opciones' && proc && (
+        <TabOpciones proceso={proc} canEdit={canEdit} onSaved={handleSaved} />
+      )}
+      {tab === 'docs' && proc && (
+        <TabDocs proceso={proc} canEdit={canEdit} onSaved={handleSaved} />
+      )}
+      {tab === 'seguimiento' && proc && ['contratado','seguimiento'].includes(proc.estado) && (
+        <TabSeguimiento proceso={proc} canEdit={canEdit} onSaved={handleSaved} />
       )}
     </div>
   );
 }
 
-// ─── Supply point card ────────────────────────────────────────────────────────
+// ─── Tab 1: Factura ───────────────────────────────────────────────────────────
 
-function SupplyPointCard({ pt, users, contact, user, contract, contractDocs, onEdit, onDelete, onEnviar, onAprobar, onRefresh }) {
-  const [expanded, setExpanded] = useState(false);
-  const bothReady = !!(pt.factura_1_nombre && pt.factura_2_nombre);
-  const com = users?.find(u => u.id === pt.comercial_id);
-  const estudioAprobado = contract?.estudio_aprobado;
+function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onSaved, onDeleted }) {
+  const initForm = () => proceso ? {
+    contact_id: proceso.contact_id||'', cups: proceso.cups||'', tarifa_actual: proceso.tarifa_actual||'2.0TD',
+    comercializadora_actual: proceso.comercializadora_actual||'', consumo_anual_kwh: proceso.consumo_anual_kwh ?? '',
+    importe_factura_eur: proceso.importe_factura_eur ?? '', fecha_factura: proceso.fecha_factura||'',
+    comercial_id: proceso.comercial_id||'', notas: proceso.notas||'',
+  } : { ...EMPTY_FORM, comercial_id: user.id };
 
-  // Estado efectivo: usar campo nuevo o inferir de campos legacy
-  const efectivo = pt.estado_estudio ||
-    (pt.enviado_partner ? 'estudio_enviado' : (bothReady ? 'estudio_pendiente' : 'pendiente_subida'));
-
-  const headerBg = estudioAprobado ? '#eff6ff'
-    : efectivo === 'estudio_enviado' ? '#f0fdf4'
-    : efectivo === 'estudio_pendiente' ? '#fffbeb'
-    : '#f8f9fd';
-
-  return (
-    <div style={{ border: '1.5px solid #dde2f0', borderRadius: 12, marginBottom: 12, overflow: 'hidden' }}>
-      {/* Cabecera */}
-      <div style={{ padding: '12px 16px', background: headerBg }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: BRAND }}>{pt.nombre}</span>
-              {estudioAprobado ? (
-                <span style={{ fontSize: 10, fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', borderRadius: 20, padding: '2px 8px' }}>
-                  Contratación
-                </span>
-              ) : efectivo === 'estudio_enviado' ? (
-                <span style={{ fontSize: 10, fontWeight: 700, background: '#d1fae5', color: '#059669', borderRadius: 20, padding: '2px 8px' }}>
-                  ✅ Estudio enviado a partner
-                </span>
-              ) : efectivo === 'estudio_pendiente' ? (
-                <span style={{ fontSize: 10, fontWeight: 700, background: '#fef3c7', color: '#d97706', borderRadius: 20, padding: '2px 8px' }}>
-                  ⏳ Estudio pendiente
-                </span>
-              ) : (
-                <span style={{ fontSize: 10, fontWeight: 700, background: '#f3f4f6', color: '#6b7280', borderRadius: 20, padding: '2px 8px' }}>
-                  Pendiente subida
-                </span>
-              )}
-              {/* Botón Enviar a Partner visible directo en cabecera */}
-              {efectivo === 'estudio_pendiente' && !estudioAprobado && (
-                <button
-                  onClick={onEnviar}
-                  style={{
-                    fontSize: 10, fontWeight: 700, background: '#d97706', color: 'white',
-                    border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                  }}
-                >
-                  📤 Enviar a Partner
-                </button>
-              )}
-            </div>
-            {pt.cups && (
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 1 }}>CUPS: {pt.cups}</p>
-            )}
-            {pt.direccion && (
-              <p style={{ fontSize: 11, color: '#6b7280' }}>
-                {[pt.direccion, pt.localidad, pt.provincia].filter(Boolean).join(', ')}
-              </p>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-            <button onClick={() => setExpanded(e => !e)} style={chipBtn('#e6eaf8', BRAND)}>
-              {expanded ? 'Ocultar' : 'Ver detalle'}
-            </button>
-            <button onClick={onEdit} style={chipBtn('#f0fdf4', '#059669')}>Editar</button>
-            <button onClick={onDelete} style={chipBtn('#fef2f2', '#dc2626')}>Eliminar</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Detalle expandido */}
-      {expanded && (
-        <div style={{ padding: '14px 16px', borderTop: '1px solid #dde2f0', background: 'white' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 14 }}>
-            {[
-              ['Tarifa', pt.tarifa],
-              ['Potencia', pt.potencia_contratada ? `${pt.potencia_contratada} kW` : null],
-              ['Comercializadora', pt.comercializadora_actual],
-            ].filter(([, v]) => v).map(([k, v]) => (
-              <div key={k}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 2 }}>{k}</p>
-                <p style={{ fontSize: 12, color: '#1e2a4a', fontWeight: 600 }}>{v}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Facturas descargables */}
-          {(pt.factura_1_nombre || pt.factura_2_nombre) && (
-            <div style={{ marginBottom: 14 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Facturas</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[1, 2].map(n => {
-                  const nombre = pt[`factura_${n}_nombre`];
-                  const b64 = pt[`factura_${n}_base64`];
-                  return nombre ? (
-                    <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8f9fd', borderRadius: 8, border: '1px solid #dde2f0' }}>
-                      <span style={{ fontSize: 12 }}>📄</span>
-                      <span style={{ fontSize: 11, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        Factura {n}: {nombre}
-                      </span>
-                      {b64 && (
-                        <button
-                          onClick={() => downloadBase64Pdf(b64, nombre)}
-                          style={{ fontSize: 10, fontWeight: 700, background: '#e6eaf8', color: BRAND, border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}
-                        >
-                          ⬇ Descargar
-                        </button>
-                      )}
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── FASE 1 ── */}
-          {efectivo !== 'estudio_enviado' && !estudioAprobado && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
-                Fase 1 — Estudio energético
-              </p>
-              {efectivo === 'estudio_pendiente' ? (
-                <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600, textAlign: 'center', padding: '8px 0', background: '#fffbeb', borderRadius: 8 }}>
-                  ⏳ Facturas subidas — usa el botón "📤 Enviar a Partner" para enviarlas
-                </p>
-              ) : (
-                <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}>
-                  Sube las dos facturas para continuar
-                </p>
-              )}
-            </div>
-          )}
-
-          {efectivo === 'estudio_enviado' && !estudioAprobado && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
-                Fase 1 — Estudio energético
-              </p>
-              {pt.fecha_envio && (
-                <p style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginBottom: 10 }}>
-                  ✅ Facturas enviadas el {new Date(pt.fecha_envio).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  {com ? ` por ${com.name}` : ''}
-                </p>
-              )}
-              <button
-                onClick={onAprobar}
-                style={{
-                  width: '100%', padding: '9px 0', borderRadius: 8, border: 'none',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  background: '#059669', color: 'white',
-                }}
-              >
-                ✅ Estudio aprobado por cliente
-              </button>
-            </div>
-          )}
-
-          {/* ── FASE 2 ── */}
-          {estudioAprobado && (
-            <ContratoSection
-              contract={contract}
-              docs={contractDocs}
-              contact={contact}
-              user={user}
-              pt={pt}
-              onRefresh={onRefresh}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function chipBtn(bg, color) {
-  return {
-    fontSize: 11, fontWeight: 700, background: bg, color,
-    border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
-  };
-}
-
-// ─── Fase 2 — Documentación para contrato ─────────────────────────────────────
-
-function ContratoSection({ contract, docs, contact, user, pt, onRefresh }) {
-  const [savingPerfil, setSavingPerfil] = useState(false);
+  const [form, setForm] = useState(initForm);
+  const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [cSearch, setCSearch] = useState('');
+  const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
+  const numOrNull = v => (v !== '' && v !== null && v !== undefined) ? Number(v) : null;
 
-  const perfil = contract?.perfil_cliente;
-  const docsTotal = docs.length;
-  const docsRecibidos = docs.filter(d => d.recibido).length;
-  const todosRecibidos = docsTotal > 0 && docsRecibidos === docsTotal;
+  const basePayload = () => ({
+    contact_id: form.contact_id || null, cups: form.cups || null, tarifa_actual: form.tarifa_actual || null,
+    comercializadora_actual: form.comercializadora_actual || null,
+    consumo_anual_kwh: numOrNull(form.consumo_anual_kwh), importe_factura_eur: numOrNull(form.importe_factura_eur),
+    fecha_factura: form.fecha_factura || null, comercial_id: form.comercial_id || null, notas: form.notas || null,
+  });
 
-  const handlePerfilChange = async (nuevoPerfil) => {
-    if (!contract || nuevoPerfil === perfil) return;
-    if (docs.length > 0) {
-      if (!window.confirm('Cambiar el perfil eliminará los documentos actuales. ¿Continuar?')) return;
-    }
-    setSavingPerfil(true);
-    await supabase.from('energy_contract_docs').delete().eq('contract_id', contract.id);
-    await supabase.from('energy_contracts').update({ perfil_cliente: nuevoPerfil }).eq('id', contract.id);
-    const docNames = DOCS_POR_PERFIL[nuevoPerfil] || [];
-    const now = new Date().toISOString();
-    const newDocs = docNames.map(nombre => ({
-      id: crypto.randomUUID(),
-      contract_id: contract.id,
-      nombre,
-      recibido: false,
-      archivo_url: null,
-      archivo_nombre: null,
-      archivo_base64: null,
-      created_at: now,
-    }));
-    if (newDocs.length > 0) {
-      await supabase.from('energy_contract_docs').insert(newDocs);
-    }
-    setSavingPerfil(false);
-    onRefresh();
-  };
-
-  const handleToggleRecibido = async (doc) => {
-    await supabase.from('energy_contract_docs').update({ recibido: !doc.recibido }).eq('id', doc.id);
-    onRefresh();
-  };
-
-  const handleDocUpload = async (doc, file) => {
-    const b64 = await fileToBase64(file);
-    await supabase.from('energy_contract_docs').update({
-      archivo_nombre: file.name,
-      archivo_base64: b64,
-      recibido: true,
-    }).eq('id', doc.id);
-    onRefresh();
-  };
-
-  const handleEnviarExpediente = async () => {
-    if (!todosRecibidos || sending) return;
-    setSending(true);
+  const handleSave = async (extra = {}, busySetter = setSaving) => {
+    busySetter(true);
     try {
-      const perfilLabel = PERFIL_LABELS[perfil] || perfil;
-      const bodyText = [
-        `Estimados, adjunto les envío el expediente de contratación del cliente ${contact.name} (perfil: ${perfilLabel}).`,
-        '',
-        'Datos del cliente:',
-        `Nombre: ${contact.name}`,
-        `Teléfono: ${contact.phone || '—'}`,
-        `Email: ${contact.email || '—'}`,
-        '',
-        `Punto de suministro: ${pt.nombre}`,
-        `CUPS: ${pt.cups || '—'}`,
-        `Dirección: ${[pt.direccion, pt.localidad, pt.provincia].filter(Boolean).join(', ') || '—'}`,
-        `Tarifa: ${pt.tarifa || '—'}`,
-        '',
-        `Perfil cliente: ${perfilLabel}`,
-        '',
-        'Documentos adjuntos:',
-        ...docs.map(d => `- ${d.nombre}${d.archivo_nombre ? `: ${d.archivo_nombre}` : ''}`),
-      ].join('\n');
-
-      const attachments = docs
-        .filter(d => d.archivo_base64 && d.archivo_nombre)
-        .map(d => ({ content: d.archivo_base64, name: d.archivo_nombre }));
-
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'api-key': BREVO_API_KEY,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: user.name, email: user.email },
-          to: [{ email: PARTNER_EMAIL }],
-          subject: `Expediente contratación — ${contact.name}`,
-          textContent: bodyText,
-          ...(attachments.length > 0 ? { attachment: attachments } : {}),
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(JSON.stringify(errData));
+      const payload = { ...basePayload(), ...extra };
+      let rec;
+      if (isNew) {
+        const { data, error } = await supabase.from('energia_procesos')
+          .insert({ id: genId(), ...payload, estado: payload.estado || 'factura_recibida', created_at: new Date().toISOString() })
+          .select('*, contacts(name, phone), users(name)').single();
+        if (error) throw error;
+        rec = data;
+      } else {
+        const { data, error } = await supabase.from('energia_procesos')
+          .update(payload).eq('id', proceso.id)
+          .select('*, contacts(name, phone), users(name)').single();
+        if (error) throw error;
+        rec = data;
       }
-
-      const hoy = new Date().toISOString();
-      await supabase.from('energy_contracts').update({
-        expediente_enviado: true,
-        fecha_envio_expediente: hoy,
-      }).eq('id', contract.id);
-
-      await supabase.from('interactions').insert({
-        id: crypto.randomUUID(),
-        contact_id: contact.id,
-        tipo: 'email',
-        fecha: hoy.split('T')[0],
-        descripcion: `Expediente de contratación enviado al partner — punto "${pt.nombre}" — perfil: ${perfilLabel}`,
-        comercial_id: user.id,
-      });
-
-      const { data: deals } = await supabase.from('deals').select('id').eq('contact_id', contact.id).eq('linea', 'energia').limit(1);
-      if (deals && deals.length > 0) {
-        await supabase.from('deals').update({ etapa: 'contrato enviado', updated_at: hoy.split('T')[0] }).eq('id', deals[0].id);
-      }
-
-      await onRefresh();
-      alert('Expediente enviado correctamente');
+      onSaved(rec);
     } catch (e) {
-      alert(`Error al enviar: ${e.message}`);
+      alert(`Error: ${e.message}`);
     } finally {
-      setSending(false);
+      busySetter(false);
     }
   };
 
+  const handleEnviarPartner = () => handleSave({ estado:'enviada_partner', fecha_envio_partner: today() }, setSending);
+
+  const handleDelete = async () => {
+    if (!window.confirm('¿Eliminar este proceso? No se puede deshacer.')) return;
+    setDeleting(true);
+    const { error } = await supabase.from('energia_procesos').delete().eq('id', proceso.id);
+    if (error) { alert(`Error: ${error.message}`); setDeleting(false); return; }
+    onDeleted(proceso.id);
+  };
+
+  const selCon = contacts.find(c => c.id === form.contact_id);
+  const filtCon = cSearch ? contacts.filter(c => c.name?.toLowerCase().includes(cSearch.toLowerCase())).slice(0,15) : [];
+
   return (
-    <div style={{ marginTop: 16, padding: 14, background: '#f0f4ff', borderRadius: 10, border: '1.5px solid #c7d2fe' }}>
-      <p style={{ fontSize: 10, fontWeight: 800, color: BRAND, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 12 }}>
-        Fase 2 — Documentación para contrato
-      </p>
-
-      {/* Selector de perfil */}
-      <div style={{ marginBottom: 14 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Perfil del cliente</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {Object.entries(PERFIL_LABELS).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => handlePerfilChange(key)}
-              disabled={savingPerfil}
-              style={{
-                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                border: `2px solid ${perfil === key ? BRAND : '#dde2f0'}`,
-                background: perfil === key ? BRAND : 'white',
-                color: perfil === key ? 'white' : '#374151',
-                cursor: savingPerfil ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Lista de documentos */}
-      {perfil && docs.length > 0 && (
-        <>
-          {/* Barra de progreso */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>
-                {docsRecibidos} de {docsTotal} documentos recibidos
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: todosRecibidos ? '#059669' : '#d97706' }}>
-                {todosRecibidos ? '✅ Completo' : `${Math.round((docsRecibidos / docsTotal) * 100)}%`}
-              </span>
+    <div>
+      <Sec title="Cliente">
+        <div style={{ position:'relative' }}>
+          <FL>Cliente</FL>
+          {selCon ? (
+            <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, maxWidth:400 }}>
+              <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
+              <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
             </div>
-            <div style={{ height: 6, background: '#dde2f0', borderRadius: 99, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${(docsRecibidos / docsTotal) * 100}%`,
-                background: todosRecibidos ? '#059669' : BRAND,
-                borderRadius: 99,
-                transition: 'width .3s',
-              }} />
-            </div>
-          </div>
-
-          {/* Items de documentos */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-            {docs.map(doc => (
-              <DocItem
-                key={doc.id}
-                doc={doc}
-                onToggle={() => handleToggleRecibido(doc)}
-                onUpload={(file) => handleDocUpload(doc, file)}
-              />
-            ))}
-          </div>
-
-          {/* Botón enviar expediente */}
-          {contract?.expediente_enviado ? (
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#059669', textAlign: 'center', padding: '8px 0' }}>
-              ✅ Expediente enviado al partner el{' '}
-              {new Date(contract.fecha_envio_expediente).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
           ) : (
-            <button
-              onClick={handleEnviarExpediente}
-              disabled={!todosRecibidos || sending}
-              style={{
-                width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
-                fontSize: 13, fontWeight: 700,
-                cursor: (todosRecibidos && !sending) ? 'pointer' : 'not-allowed',
-                background: todosRecibidos ? BRAND : '#f3f4f6',
-                color: todosRecibidos ? 'white' : '#9ca3af',
-              }}
-            >
-              {sending
-                ? 'Enviando...'
-                : todosRecibidos
-                ? '📋 Enviar expediente al partner'
-                : '📋 Enviar expediente al partner — marca todos los documentos primero'}
-            </button>
+            <div style={{ maxWidth:400 }}>
+              <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
+              {filtCon.length > 0 && (
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, maxWidth:400, background:'white', border:'1.5px solid #dde2f0', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                  {filtCon.map(c => (
+                    <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
+                      style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #f0f3fb' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#f0f3fb'}
+                      onMouseLeave={e => e.currentTarget.style.background=''}>
+                      {c.name}{c.phone ? ` · ${c.phone}` : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </>
-      )}
+        </div>
+      </Sec>
 
-      {perfil && docs.length === 0 && !savingPerfil && (
-        <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Cargando documentos...</p>
-      )}
-
-      {savingPerfil && (
-        <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Guardando perfil...</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Doc item ──────────────────────────────────────────────────────────────────
-
-function DocItem({ doc, onToggle, onUpload }) {
-  const [uploading, setUploading] = useState(false);
-
-  const handleFile = async (file) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      await onUpload(file);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 10px', background: 'white', borderRadius: 8,
-      border: `1.5px solid ${doc.recibido ? '#a7f3d0' : '#dde2f0'}`,
-    }}>
-      <input
-        type="checkbox"
-        checked={doc.recibido}
-        onChange={onToggle}
-        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: BRAND, flexShrink: 0 }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: doc.recibido ? '#059669' : '#374151', marginBottom: doc.archivo_nombre ? 2 : 0 }}>
-          {doc.nombre}
-        </p>
-        {doc.archivo_nombre && (
-          <p style={{ fontSize: 10, color: '#6b7280', wordBreak: 'break-all' }}>📎 {doc.archivo_nombre}</p>
-        )}
-      </div>
-      <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
-        <span style={{
-          fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 6,
-          background: doc.archivo_nombre ? '#f0fdf4' : '#f0f4ff',
-          color: doc.archivo_nombre ? '#059669' : BRAND,
-          border: `1px solid ${doc.archivo_nombre ? '#a7f3d0' : '#c7d2fe'}`,
-          display: 'inline-block',
-          opacity: uploading ? 0.6 : 1,
-        }}>
-          {uploading ? '...' : doc.archivo_nombre ? 'Cambiar' : 'Subir'}
-        </span>
-        <input
-          type="file"
-          accept=".pdf,image/*"
-          style={{ display: 'none' }}
-          onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }}
-          disabled={uploading}
-        />
-      </label>
-    </div>
-  );
-}
-
-// ─── Add / Edit modal ─────────────────────────────────────────────────────────
-
-function AddEditModal({ editingPoint, form, uploading, saving, onClose, onChange, onUpload, onSave }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,20,80,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
-      <div style={{ background: 'white', borderRadius: 18, padding: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, color: BRAND, marginBottom: 18 }}>
-          {editingPoint ? 'Editar punto de suministro' : 'Nuevo punto de suministro'}
-        </h2>
-
-        {/* Sección 1 — Datos del punto */}
-        <SectionTitle>Datos del punto</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <div style={{ gridColumn: '1/-1' }}>
-            <FormLabel>Nombre identificativo *</FormLabel>
-            <FormInput value={form.nombre} onChange={v => onChange('nombre', v)} placeholder="Ej: Casa, Local comercial..." />
-          </div>
+      <Sec title="Factura actual">
+        <Grid2>
+          <div><FL>CUPS</FL><input className="fi" value={form.cups} onChange={e => set('cups', e.target.value)} placeholder="ES0031..." /></div>
           <div>
-            <FormLabel>CUPS (20 caracteres)</FormLabel>
-            <FormInput value={form.cups} onChange={v => onChange('cups', v.toUpperCase())} placeholder="ES0031..." maxLength={22} />
-          </div>
-          <div>
-            <FormLabel>Comercializadora actual</FormLabel>
-            <FormInput value={form.comercializadora_actual} onChange={v => onChange('comercializadora_actual', v)} placeholder="Ej: Iberdrola..." />
-          </div>
-          <div style={{ gridColumn: '1/-1' }}>
-            <FormLabel>Dirección *</FormLabel>
-            <FormInput value={form.direccion} onChange={v => onChange('direccion', v)} placeholder="Calle, número..." />
-          </div>
-          <div>
-            <FormLabel>Localidad</FormLabel>
-            <FormInput value={form.localidad} onChange={v => onChange('localidad', v)} placeholder="Ciudad..." />
-          </div>
-          <div>
-            <FormLabel>Código Postal</FormLabel>
-            <FormInput value={form.codigo_postal} onChange={v => onChange('codigo_postal', v)} placeholder="28000" maxLength={5} />
-          </div>
-          <div>
-            <FormLabel>Provincia</FormLabel>
-            <FormInput value={form.provincia} onChange={v => onChange('provincia', v)} placeholder="Provincia..." />
-          </div>
-          <div>
-            <FormLabel>Tarifa actual</FormLabel>
-            <select
-              value={form.tarifa}
-              onChange={e => onChange('tarifa', e.target.value)}
-              style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, color: '#1e2a4a', background: 'white', boxSizing: 'border-box' }}
-            >
-              <option value="">Seleccionar...</option>
+            <FL>Tarifa actual</FL>
+            <select className="fi" value={form.tarifa_actual} onChange={e => set('tarifa_actual', e.target.value)}>
               {TARIFAS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+          <div><FL>Comercializadora actual</FL><input className="fi" value={form.comercializadora_actual} onChange={e => set('comercializadora_actual', e.target.value)} /></div>
+          <div><FL>Consumo anual (kWh)</FL><input className="fi" type="number" value={form.consumo_anual_kwh} onChange={e => set('consumo_anual_kwh', e.target.value)} /></div>
+          <div><FL>Importe última factura (€)</FL><input className="fi" type="number" value={form.importe_factura_eur} onChange={e => set('importe_factura_eur', e.target.value)} /></div>
+          <div><FL>Fecha factura</FL><input className="fi" type="date" value={form.fecha_factura} onChange={e => set('fecha_factura', e.target.value)} /></div>
           <div>
-            <FormLabel>Potencia contratada (kW)</FormLabel>
-            <FormInput value={form.potencia_contratada} onChange={v => onChange('potencia_contratada', v)} placeholder="Ej: 5.75" />
+            <FL>Comercial asignado</FL>
+            <select className="fi" value={form.comercial_id} onChange={e => set('comercial_id', e.target.value)}>
+              <option value="">Seleccionar...</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        </Grid2>
+        <div style={{ marginTop:12 }}>
+          <FL>Notas generales</FL>
+          <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+        </div>
+      </Sec>
+
+      {!canEdit ? (
+        <p style={{ fontSize:12, color:'#9ca3af' }}>No tienes permiso para editar este proceso.</p>
+      ) : (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8, flexWrap:'wrap', gap:10 }}>
+          <div>
+            {!isNew && admin && (
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                {deleting ? 'Eliminando...' : '🗑 Eliminar proceso'}
+              </button>
+            )}
+          </div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : (isNew ? '💾 Crear proceso' : '💾 Guardar')}</button>
+            {!isNew && (
+              <button className="btn-p" onClick={handleEnviarPartner} disabled={sending}>
+                {sending ? 'Enviando...' : '📤 Marcar como enviada al partner'}
+              </button>
+            )}
           </div>
         </div>
-
-        {/* Sección 2 — Facturas */}
-        <SectionTitle style={{ marginTop: 6 }}>Facturas</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          {[1, 2].map(num => {
-            const nombre = form[`factura_${num}_nombre`];
-            const isUploading = uploading[num];
-            return (
-              <div key={num} style={{ border: '2px dashed #dde2f0', borderRadius: 12, padding: 14, textAlign: 'center', background: '#f8f9fd' }}>
-                <div style={{ fontSize: 20, marginBottom: 5 }}>📄</div>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Factura {num} *</p>
-                {nombre ? (
-                  <div>
-                    <p style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginBottom: 8, wordBreak: 'break-all', lineHeight: 1.4 }}>{nombre}</p>
-                    <label style={{ cursor: 'pointer' }}>
-                      <span style={{ fontSize: 11, color: BRAND, border: '1.5px solid #dde2f0', borderRadius: 6, padding: '3px 10px', display: 'inline-block' }}>
-                        Cambiar
-                      </span>
-                      <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }}
-                        onChange={e => { onUpload(num, e.target.files[0]); e.target.value = ''; }}
-                        disabled={isUploading} />
-                    </label>
-                  </div>
-                ) : (
-                  <label style={{ cursor: isUploading ? 'not-allowed' : 'pointer' }}>
-                    <span style={{ fontSize: 12, color: BRAND, fontWeight: 600, display: 'inline-block', padding: '6px 14px', background: '#e6eaf8', borderRadius: 8, opacity: isUploading ? 0.6 : 1 }}>
-                      {isUploading ? 'Leyendo...' : '+ Subir PDF'}
-                    </span>
-                    <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }}
-                      onChange={e => { onUpload(num, e.target.files[0]); e.target.value = ''; }}
-                      disabled={isUploading} />
-                  </label>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #dde2f0', background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
-            Cancelar
-          </button>
-          <button onClick={onSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: saving ? '#9ca3af' : BRAND, color: 'white', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
-            {saving ? 'Guardando...' : 'Guardar punto de suministro'}
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── Enviar modal ─────────────────────────────────────────────────────────────
+// ─── Tab 2: Opciones del partner ─────────────────────────────────────────────
 
-function EnviarModal({ pt, contact, mensaje, sending, onClose, onMensajeChange, onEnviar }) {
-  const dirCliente = [contact.direccion, contact.localidad, contact.provincia].filter(Boolean).join(', ') || '—';
-  const dirPunto = [pt.direccion, pt.localidad, pt.provincia].filter(Boolean).join(', ') || '—';
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,20,80,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
-      <div style={{ background: 'white', borderRadius: 18, padding: 24, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, color: BRAND, marginBottom: 16 }}>Enviar facturas al partner</h2>
-
-        <div style={{ background: '#f8f9fd', borderRadius: 10, padding: 12, marginBottom: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>Datos del cliente</p>
-          {[
-            ['Nombre', contact.name],
-            ['Teléfono', contact.phone || '—'],
-            ['Email', contact.email || '—'],
-            ['Dirección', dirCliente],
-          ].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', minWidth: 70 }}>{k}:</span>
-              <span style={{ fontSize: 11, color: '#1e2a4a' }}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: '#fffbeb', borderRadius: 10, padding: 12, marginBottom: 16 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>Punto de suministro</p>
-          {[
-            ['Nombre', pt.nombre],
-            ['CUPS', pt.cups || '—'],
-            ['Dirección', dirPunto],
-            ['Tarifa', pt.tarifa || '—'],
-            ['Potencia', pt.potencia_contratada ? `${pt.potencia_contratada} kW` : '—'],
-            ['Comercializadora', pt.comercializadora_actual || '—'],
-          ].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', minWidth: 100 }}>{k}:</span>
-              <span style={{ fontSize: 11, color: '#1e2a4a' }}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'block', textTransform: 'uppercase', letterSpacing: '.5px' }}>Mensaje</label>
-          <textarea
-            style={{ width: '100%', padding: '8px 11px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 100, fontFamily: 'inherit', color: '#1e2a4a', boxSizing: 'border-box' }}
-            value={mensaje}
-            onChange={e => onMensajeChange(e.target.value)}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #dde2f0', background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
-            Cancelar
-          </button>
-          <button onClick={onEnviar} disabled={sending} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: sending ? '#9ca3af' : '#d97706', color: 'white', fontSize: 13, fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer' }}>
-            {sending ? 'Enviando...' : 'Enviar'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Helpers UI ───────────────────────────────────────────────────────────────
-
-function SectionTitle({ children, style }) {
-  return (
-    <p style={{ fontSize: 11, fontWeight: 800, color: BRAND, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, ...style }}>
-      {children}
-    </p>
-  );
-}
-
-function FormLabel({ children }) {
-  return <label style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, display: 'block' }}>{children}</label>;
-}
-
-function FormInput({ value, onChange, placeholder, maxLength }) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, color: '#1e2a4a', outline: 'none', boxSizing: 'border-box' }}
-    />
-  );
-}
-
-// ─── Historial de estudios energéticos ───────────────────────────────────────
-
-const ESTADO_ESTUDIO_CONFIG = {
-  pendiente: { label: 'Pendiente revisión', bg: '#fef3c7', color: '#d97706' },
-  aceptado:  { label: 'Aceptado',           bg: '#d1fae5', color: '#059669' },
-  rechazado: { label: 'Rechazado',           bg: '#fee2e2', color: '#dc2626' },
-};
-
-function StudiesSection({ contact, user, points }) {
-  const [studies, setStudies] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [editingStudy, setEditingStudy] = useState(null);
-  const [form, setForm] = useState({ fecha: '', supply_point_id: '', estado: 'pendiente', notas: '' });
-  const [pendingFile, setPendingFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
+function TabOpciones({ proceso, canEdit, onSaved }) {
+  const [rows, setRows] = useState(() => Array.isArray(proceso.opciones_partner) ? proceso.opciones_partner.map(o => ({ ...EMPTY_OPCION, ...o })) : []);
   const [saving, setSaving] = useState(false);
 
-  const loadStudies = async () => {
-    setLoaded(false);
-    const { data } = await supabase
-      .from('energy_studies')
-      .select('*')
-      .eq('contact_id', contact.id)
-      .order('fecha', { ascending: false });
-    setStudies(data || []);
-    setLoaded(true);
-  };
+  useEffect(() => {
+    setRows(Array.isArray(proceso.opciones_partner) ? proceso.opciones_partner.map(o => ({ ...EMPTY_OPCION, ...o })) : []);
+  }, [proceso.id]); // eslint-disable-line
 
-  useEffect(() => { loadStudies(); }, [contact.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const openAdd = () => {
-    setEditingStudy(null);
-    setForm({ fecha: new Date().toISOString().split('T')[0], supply_point_id: '', estado: 'pendiente', notas: '' });
-    setPendingFile(null);
-    setShowForm(true);
-  };
-
-  const openEdit = (s) => {
-    setEditingStudy(s);
-    setForm({ fecha: s.fecha || '', supply_point_id: s.supply_point_id || '', estado: s.estado || 'pendiente', notas: s.notas || '' });
-    setPendingFile(null);
-    setShowForm(true);
-  };
+  const addRow = () => setRows(r => [...r, { ...EMPTY_OPCION }]);
+  const removeRow = (idx) => setRows(r => r.filter((_,i) => i !== idx));
+  const updateRow = (idx, field, val) => setRows(r => r.map((row,i) => i === idx ? { ...row, [field]: val } : row));
+  const selectRow = (idx) => setRows(r => r.map((row,i) => ({ ...row, seleccionada: i === idx })));
 
   const handleSave = async () => {
-    if (!form.fecha) { alert('La fecha es obligatoria'); return; }
     setSaving(true);
     try {
-      let archivo_url = editingStudy?.archivo_url || null;
-      let archivo_nombre = editingStudy?.archivo_nombre || null;
-
-      if (pendingFile) {
-        setUploading(true);
-        const compressed = await compressFileIfPdf(pendingFile);
-        const safeName = sanitizeFileName(pendingFile.name);
-        const studyId = editingStudy?.id || crypto.randomUUID();
-        const storagePath = `energy_studies/${contact.id}/${studyId}_${Date.now()}_${safeName}`;
-        const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, compressed, { upsert: true });
-        if (upErr) throw new Error(`Error al subir PDF: ${upErr.message}`);
-        archivo_url = storagePath;
-        archivo_nombre = pendingFile.name;
-        setUploading(false);
-      }
-
-      const now = new Date().toISOString();
+      const selected = rows.find(r => r.seleccionada);
       const payload = {
-        contact_id: contact.id,
-        supply_point_id: form.supply_point_id || null,
-        fecha: form.fecha,
-        estado: form.estado,
-        notas: form.notas || null,
-        archivo_url,
-        archivo_nombre,
-        comercial_id: user.id,
+        opciones_partner: rows,
+        opcion_seleccionada: selected ? selected.comercializadora : proceso.opcion_seleccionada,
+        estado: selected ? 'seleccionada' : (proceso.estado === 'enviada_partner' && rows.length > 0 ? 'opciones_recibidas' : proceso.estado),
       };
-
-      if (editingStudy) {
-        const { error } = await supabase.from('energy_studies').update(payload).eq('id', editingStudy.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('energy_studies').insert({ id: crypto.randomUUID(), ...payload, created_at: now });
-        if (error) throw error;
-      }
-
-      setShowForm(false);
-      await loadStudies();
+      const { data, error } = await supabase.from('energia_procesos').update(payload).eq('id', proceso.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (error) throw error;
+      onSaved(data);
     } catch (e) {
       alert(`Error: ${e.message}`);
     } finally {
       setSaving(false);
-      setUploading(false);
     }
   };
-
-  const handleDelete = async (s) => {
-    if (!window.confirm('¿Eliminar este estudio? Esta acción no se puede deshacer.')) return;
-    if (s.archivo_url) {
-      await supabase.storage.from('documentos').remove([s.archivo_url]);
-    }
-    await supabase.from('energy_studies').delete().eq('id', s.id);
-    await loadStudies();
-  };
-
-  const handleChangeEstado = async (s, nuevoEstado) => {
-    await supabase.from('energy_studies').update({ estado: nuevoEstado }).eq('id', s.id);
-    setStudies(prev => prev.map(x => x.id === s.id ? { ...x, estado: nuevoEstado } : x));
-  };
-
-  const handleDownload = async (s) => {
-    const { data, error } = await supabase.storage.from('documentos').createSignedUrl(s.archivo_url, 3600);
-    if (error) { alert(`Error al generar enlace: ${error.message}`); return; }
-    window.open(data.signedUrl, '_blank');
-  };
-
-  if (!loaded) return <p style={{ color: '#9ca3af', fontSize: 13 }}>Cargando estudios...</p>;
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-        <button
-          onClick={openAdd}
-          style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: BRAND, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-        >
-          ➕ Añadir estudio
-        </button>
-      </div>
-
-      {studies.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: '24px 0' }}>
-          No hay estudios registrados. Añade el primero.
+      <Sec title="Envío al partner">
+        <p style={{ fontSize:12, color:'#6b7280' }}>
+          {proceso.fecha_envio_partner ? `Enviada al partner el ${proceso.fecha_envio_partner}` : 'Todavía no se ha registrado el envío al partner.'}
         </p>
-      )}
+      </Sec>
 
-      {studies.map(s => {
-        const pt = points.find(p => p.id === s.supply_point_id);
-        const ec = ESTADO_ESTUDIO_CONFIG[s.estado] || ESTADO_ESTUDIO_CONFIG.pendiente;
-        return (
-          <div key={s.id} style={{ border: '1.5px solid #dde2f0', borderRadius: 12, padding: '12px 16px', marginBottom: 10, background: 'white' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: BRAND }}>
-                    {s.fecha ? new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
-                  </span>
-                  {pt && <span style={{ fontSize: 11, color: '#6b7280' }}>— {pt.nombre}{pt.cups ? ` (${pt.cups})` : ''}</span>}
-                  <span style={{ fontSize: 10, fontWeight: 700, background: ec.bg, color: ec.color, borderRadius: 20, padding: '2px 8px' }}>
-                    {ec.label}
-                  </span>
+      <Sec title="Opciones recibidas">
+        {rows.length === 0 ? (
+          <p style={{ fontSize:13, color:'#9ca3af', marginBottom:14 }}>Sin opciones registradas todavía.</p>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
+            {rows.map((row, idx) => (
+              <div key={idx} className="card" style={{ padding:14, border: row.seleccionada ? '2px solid #06b6d4' : '1.5px solid #e8ecf8' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
+                  <div><FL>Comercializadora</FL><input className="fi" value={row.comercializadora} disabled={!canEdit} onChange={e => updateRow(idx,'comercializadora',e.target.value)} /></div>
+                  <div><FL>Precio kWh (€)</FL><input className="fi" type="number" step="0.0001" value={row.precio_kwh} disabled={!canEdit} onChange={e => updateRow(idx,'precio_kwh',e.target.value)} /></div>
+                  <div><FL>Ahorro estimado anual (€)</FL><input className="fi" type="number" value={row.ahorro_estimado} disabled={!canEdit} onChange={e => updateRow(idx,'ahorro_estimado',e.target.value)} /></div>
+                  <div style={{ gridColumn:'1/-1' }}><FL>Notas</FL><input className="fi" value={row.notas} disabled={!canEdit} onChange={e => updateRow(idx,'notas',e.target.value)} /></div>
                 </div>
-                {s.notas && (
-                  <p style={{ fontSize: 12, color: '#374151', marginBottom: 6, lineHeight: 1.4 }}>{s.notas}</p>
-                )}
-                {s.archivo_nombre && (
-                  <button
-                    onClick={() => handleDownload(s)}
-                    style={{ fontSize: 11, color: BRAND, background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
-                  >
-                    📄 {s.archivo_nombre}
-                  </button>
-                )}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10 }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight: row.seleccionada ? 700 : 500, color: row.seleccionada ? '#06b6d4' : '#374151', cursor: canEdit ? 'pointer' : 'default' }}>
+                    <input type="radio" name="opcion-sel" checked={row.seleccionada} disabled={!canEdit} onChange={() => selectRow(idx)}
+                      style={{ width:15, height:15, accentColor:'#06b6d4', cursor: canEdit ? 'pointer' : 'default' }} />
+                    Seleccionar esta opción
+                  </label>
+                  {canEdit && <button onClick={() => removeRow(idx)} style={{ background:'none', border:'none', color:'#dc2626', fontSize:12, cursor:'pointer' }}>✕ Quitar</button>}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
-                <select
-                  value={s.estado}
-                  onChange={e => handleChangeEstado(s, e.target.value)}
-                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 6, border: '1.5px solid #dde2f0', cursor: 'pointer', background: 'white', color: '#374151' }}
-                >
-                  {Object.entries(ESTADO_ESTUDIO_CONFIG).map(([k, v]) => (
-                    <option key={k} value={k}>{v.label}</option>
-                  ))}
-                </select>
-                <button onClick={() => openEdit(s)} style={chipBtn('#f0fdf4', '#059669')}>Editar</button>
-                <button onClick={() => handleDelete(s)} style={chipBtn('#fef2f2', '#dc2626')}>Eliminar</button>
-              </div>
-            </div>
+            ))}
           </div>
-        );
-      })}
+        )}
+        {canEdit && <button className="btn-g" onClick={addRow}>+ Añadir opción</button>}
+      </Sec>
 
-      {showForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,20,80,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
-          <div style={{ background: 'white', borderRadius: 18, padding: 24, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: BRAND, marginBottom: 18 }}>
-              {editingStudy ? 'Editar estudio' : 'Nuevo estudio energético'}
-            </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <FormLabel>Fecha *</FormLabel>
-                <input
-                  type="date"
-                  value={form.fecha}
-                  onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
-                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <FormLabel>Estado</FormLabel>
-                <select
-                  value={form.estado}
-                  onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}
-                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
-                >
-                  {Object.entries(ESTADO_ESTUDIO_CONFIG).map(([k, v]) => (
-                    <option key={k} value={k}>{v.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ gridColumn: '1/-1' }}>
-                <FormLabel>Punto de suministro</FormLabel>
-                <select
-                  value={form.supply_point_id}
-                  onChange={e => setForm(f => ({ ...f, supply_point_id: e.target.value }))}
-                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
-                >
-                  <option value="">— Sin vincular —</option>
-                  {points.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}{p.cups ? ` (${p.cups})` : ''}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ gridColumn: '1/-1' }}>
-                <FormLabel>PDF del estudio</FormLabel>
-                {(pendingFile || editingStudy?.archivo_nombre) && (
-                  <p style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginBottom: 6 }}>
-                    📄 {pendingFile ? pendingFile.name : editingStudy.archivo_nombre}
-                    {pendingFile && <span style={{ color: '#9ca3af', fontWeight: 400 }}> (nuevo)</span>}
-                  </p>
-                )}
-                <label style={{ cursor: 'pointer', display: 'inline-block' }}>
-                  <span style={{ fontSize: 12, color: BRAND, fontWeight: 600, display: 'inline-block', padding: '6px 14px', background: '#e6eaf8', borderRadius: 8 }}>
-                    {pendingFile || editingStudy?.archivo_nombre ? 'Cambiar PDF' : '+ Subir PDF'}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    style={{ display: 'none' }}
-                    onChange={e => { setPendingFile(e.target.files[0] || null); e.target.value = ''; }}
-                  />
-                </label>
-              </div>
-              <div style={{ gridColumn: '1/-1' }}>
-                <FormLabel>Notas</FormLabel>
-                <textarea
-                  value={form.notas}
-                  onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
-                  rows={3}
-                  style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #dde2f0', borderRadius: 8, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', color: '#1e2a4a' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowForm(false)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #dde2f0', background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || uploading}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: (saving || uploading) ? '#9ca3af' : BRAND, color: 'white', fontSize: 13, fontWeight: 700, cursor: (saving || uploading) ? 'not-allowed' : 'pointer' }}
-              >
-                {uploading ? 'Subiendo PDF...' : saving ? 'Guardando...' : 'Guardar estudio'}
-              </button>
-            </div>
-          </div>
+      {canEdit && (
+        <div style={{ display:'flex', justifyContent:'flex-end', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+          <button className="btn-p" onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar opciones'}</button>
         </div>
       )}
     </div>
   );
+}
+
+// ─── Tab 3: Documentación y contratación ─────────────────────────────────────
+
+function TabDocs({ proceso, canEdit, onSaved }) {
+  const [checked, setChecked] = useState(() => DOCS_CHECKLIST.map(() => false));
+  const [form, setForm] = useState({
+    fecha_contrato: proceso.fecha_contrato||'', comercializadora_nueva: proceso.comercializadora_nueva||'',
+    precio_kwh_nuevo: proceso.precio_kwh_nuevo ?? '', fecha_vencimiento: proceso.fecha_vencimiento||'',
+  });
+  const [savingDocs, setSavingDocs] = useState(false);
+  const [savingContrato, setSavingContrato] = useState(false);
+  const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
+  const numOrNull = v => (v !== '' && v !== null && v !== undefined) ? Number(v) : null;
+  const toggleDoc = (idx) => setChecked(c => c.map((v,i) => i===idx ? !v : v));
+
+  const handleMarcarDocsCompletados = async () => {
+    setSavingDocs(true);
+    try {
+      const { data, error } = await supabase.from('energia_procesos').update({ estado:'docs_solicitados' }).eq('id', proceso.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (error) throw error;
+      onSaved(data);
+    } catch (e) { alert(`Error: ${e.message}`); } finally { setSavingDocs(false); }
+  };
+
+  const handleGuardarContratacion = async (extra = {}) => {
+    setSavingContrato(true);
+    try {
+      const payload = {
+        fecha_contrato: form.fecha_contrato || null, comercializadora_nueva: form.comercializadora_nueva || null,
+        precio_kwh_nuevo: numOrNull(form.precio_kwh_nuevo), fecha_vencimiento: form.fecha_vencimiento || null,
+        ...extra,
+      };
+      const { data, error } = await supabase.from('energia_procesos').update(payload).eq('id', proceso.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (error) throw error;
+      onSaved(data);
+    } catch (e) { alert(`Error: ${e.message}`); } finally { setSavingContrato(false); }
+  };
+
+  const allChecked = checked.every(Boolean);
+
+  return (
+    <div>
+      <Sec title="Opción seleccionada">
+        {proceso.opcion_seleccionada ? (
+          <span className="tag" style={{ background:'#ecfeff', color:'#06b6d4', fontSize:13, padding:'5px 14px' }}>{proceso.opcion_seleccionada}</span>
+        ) : (
+          <p style={{ fontSize:13, color:'#9ca3af' }}>Todavía no se ha seleccionado ninguna oferta.</p>
+        )}
+      </Sec>
+
+      <Sec title="Documentación solicitada">
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
+          {DOCS_CHECKLIST.map((doc, idx) => (
+            <label key={doc} style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, cursor: canEdit ? 'pointer' : 'default', fontWeight: checked[idx] ? 700 : 400, color: checked[idx] ? BRAND : '#374151' }}>
+              <input type="checkbox" checked={checked[idx]} disabled={!canEdit} onChange={() => toggleDoc(idx)}
+                style={{ width:16, height:16, accentColor:BRAND, cursor: canEdit ? 'pointer' : 'default' }} />
+              {checked[idx] ? '☑' : '☐'} {doc}
+            </label>
+          ))}
+        </div>
+        {canEdit && (
+          <button className="btn-g" onClick={handleMarcarDocsCompletados} disabled={savingDocs || !allChecked}
+            title={!allChecked ? 'Marca los 4 documentos para continuar' : undefined}>
+            {savingDocs ? 'Guardando...' : '☑ Marcar docs completados'}
+          </button>
+        )}
+      </Sec>
+
+      <Sec title="Contratación">
+        <Grid2>
+          <div><FL>Fecha contrato</FL><input className="fi" type="date" value={form.fecha_contrato} disabled={!canEdit} onChange={e => set('fecha_contrato', e.target.value)} /></div>
+          <div><FL>Comercializadora nueva</FL><input className="fi" value={form.comercializadora_nueva} disabled={!canEdit} onChange={e => set('comercializadora_nueva', e.target.value)} /></div>
+          <div><FL>Precio kWh nuevo (€)</FL><input className="fi" type="number" step="0.0001" value={form.precio_kwh_nuevo} disabled={!canEdit} onChange={e => set('precio_kwh_nuevo', e.target.value)} /></div>
+          <div><FL>Fecha vencimiento contrato</FL><input className="fi" type="date" value={form.fecha_vencimiento} disabled={!canEdit} onChange={e => set('fecha_vencimiento', e.target.value)} /></div>
+        </Grid2>
+        {canEdit && (
+          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #e8ecf8', flexWrap:'wrap' }}>
+            <button className="btn-g" onClick={() => handleGuardarContratacion()} disabled={savingContrato}>{savingContrato ? 'Guardando...' : '💾 Guardar contratación'}</button>
+            <button className="btn-p" onClick={() => handleGuardarContratacion({ estado:'contratado' })} disabled={savingContrato}>
+              {savingContrato ? 'Guardando...' : '✓ Marcar como contratado'}
+            </button>
+          </div>
+        )}
+      </Sec>
+    </div>
+  );
+}
+
+// ─── Tab 4: Seguimiento ──────────────────────────────────────────────────────
+
+function TabSeguimiento({ proceso, canEdit, onSaved }) {
+  const [form, setForm] = useState({ ahorro_real_eur: proceso.ahorro_real_eur ?? '', notas: proceso.notas || '' });
+  const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
+  const numOrNull = v => (v !== '' && v !== null && v !== undefined) ? Number(v) : null;
+
+  const alerta = renewalBadge(proceso.fecha_vencimiento);
+
+  const handleSave = async (extra = {}, busySetter = setSaving) => {
+    busySetter(true);
+    try {
+      const payload = { ahorro_real_eur: numOrNull(form.ahorro_real_eur), notas: form.notas || null, ...extra };
+      const { data, error } = await supabase.from('energia_procesos').update(payload).eq('id', proceso.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (error) throw error;
+      onSaved(data);
+    } catch (e) { alert(`Error: ${e.message}`); } finally { busySetter(false); }
+  };
+
+  return (
+    <div>
+      <Sec title="Vencimiento">
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div><FL>Fecha vencimiento</FL><p style={{ fontSize:14, fontWeight:700, color:'#1e2a4a' }}>{proceso.fecha_vencimiento || '—'}</p></div>
+          {alerta && <span className="tag" style={{ background:alerta.bg, color:alerta.color, fontSize:12, padding:'5px 12px', fontWeight:800 }}>{alerta.label}</span>}
+        </div>
+      </Sec>
+
+      <Sec title="Seguimiento">
+        <Grid2>
+          <div><FL>Ahorro real (€)</FL><input className="fi" type="number" value={form.ahorro_real_eur} disabled={!canEdit} onChange={e => set('ahorro_real_eur', e.target.value)} /></div>
+        </Grid2>
+        <div style={{ marginTop:12 }}>
+          <FL>Notas de seguimiento</FL>
+          <textarea value={form.notas} disabled={!canEdit} onChange={e => set('notas', e.target.value)} rows={4}
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+        </div>
+        {canEdit && (
+          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #e8ecf8', flexWrap:'wrap' }}>
+            <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar'}</button>
+            {proceso.estado !== 'seguimiento' && (
+              <button className="btn-p" onClick={() => handleSave({ estado:'seguimiento' }, setActivating)} disabled={activating}>
+                {activating ? 'Activando...' : '🔔 Activar seguimiento'}
+              </button>
+            )}
+          </div>
+        )}
+      </Sec>
+    </div>
+  );
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+
+function Sec({ title, children }) {
+  return (
+    <div style={{ marginBottom:24 }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function Grid2({ children }) {
+  return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>{children}</div>;
+}
+
+function FL({ children }) {
+  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }
