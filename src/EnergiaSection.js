@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './utils/supabase';
+import { supabase, compressFileIfPdf } from './utils/supabase';
 
 const BRAND = '#002292';
 
@@ -13,7 +13,8 @@ const ESTADOS_ENERGIA = {
   seguimiento:        { label:'Seguimiento',          color:'#059669', bg:'#d1fae5' },
 };
 
-const TARIFAS = ['2.0TD','3.0TD','6.1TD','otro'];
+const TARIFAS_LUZ = ['2.0TD','3.0TD','6.1TD','Otra'];
+const TARIFAS_GAS = ['RL1','RL2','RL3','Otra'];
 
 const DOCS_CHECKLIST = [
   'DNI/NIE del titular',
@@ -25,19 +26,13 @@ const DOCS_CHECKLIST = [
 const EMPTY_OPCION = { comercializadora:'', precio_kwh:'', ahorro_estimado:'', notas:'', seleccionada:false };
 
 const EMPTY_FORM = {
-  contact_id:'', cups:'', tarifa_actual:'2.0TD', comercializadora_actual:'',
-  consumo_anual_kwh:'', importe_factura_eur:'', fecha_factura:'',
-  comercial_id:'', notas:'',
+  contact_id:'', tipo_suministro:'luz', cups:'', tarifa_actual:'2.0TD', comercializadora_actual:'',
+  direccion_suministro:'', comercial_id:'', notas:'',
 };
 
 function isAdminSocio(u) { return ['admin','socio'].includes(u.role); }
 function genId() { return crypto.randomUUID(); }
 function today() { return new Date().toISOString().split('T')[0]; }
-
-function fmt(v) {
-  if (v === null || v === undefined || v === '') return '—';
-  return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(Number(v));
-}
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -55,6 +50,15 @@ function renewalBadge(dateStr) {
   if (dias < 90) return { label:`⚠️ Renovación en ${dias} días`, color:'#dc2626', bg:'#fee2e2' };
   if (dias < 180) return { label:`Revisar en ${dias} días`, color:'#d97706', bg:'#fef3c7' };
   return null;
+}
+
+function fmtFechaLarga(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const fecha = d.toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+  const hora = d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+  return `${fecha} a las ${hora}`;
 }
 
 function selSt() {
@@ -140,15 +144,15 @@ export default function EnergiaSection({ user, users, contacts }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
           <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>⚡ Energía</h1>
-          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} procesos</p>
+          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} suministros</p>
         </div>
-        <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo proceso</button>
+        <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo suministro</button>
       </div>
 
       {/* Métricas rápidas */}
       <div className="stats-grid">
         {[
-          { l:'Total procesos', v:total, i:'⚡', c:BRAND },
+          { l:'Total suministros', v:total, i:'⚡', c:BRAND },
           { l:'Contratados', v:contratados, i:'✅', c:'#10b981' },
           { l:'En seguimiento', v:enSeguimiento, i:'🔔', c:'#059669' },
           { l:'Próximas renovaciones', v:proximasRenovaciones, i:'⚠️', c:'#d97706' },
@@ -187,7 +191,7 @@ export default function EnergiaSection({ user, users, contacts }) {
         <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
-          {visibles.length === 0 ? 'No hay procesos. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
+          {visibles.length === 0 ? 'No hay suministros. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
         <div className="card" style={{ overflow:'hidden' }}>
@@ -195,7 +199,7 @@ export default function EnergiaSection({ user, users, contacts }) {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#f8f9fd' }}>
-                  {['Cliente','Comercializadora actual','Importe factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial',''].map(h => (
+                  {['Cliente','Tipo','Comercializadora actual','Factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial',''].map(h => (
                     <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
@@ -209,8 +213,13 @@ export default function EnergiaSection({ user, users, contacts }) {
                   return (
                     <tr key={p.id} className="tr" style={{ borderTop:'1px solid #f0f3fb', cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
                       <td style={{ padding:'9px 13px', fontSize:13, fontWeight:700, color:BRAND }}>{p.contacts?.name || 'Sin cliente'}</td>
+                      <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
+                        <span className="tag" style={{ background: p.tipo_suministro==='gas' ? '#fff7ed' : '#fffbeb', color: p.tipo_suministro==='gas' ? '#f97316' : '#f59e0b' }}>
+                          {p.tipo_suministro === 'gas' ? '🔥 Gas' : '⚡ Luz'}
+                        </span>
+                      </td>
                       <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.comercializadora_actual || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(p.importe_factura_eur)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:14, textAlign:'center' }}>{p.factura_url ? '📄' : '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
@@ -242,7 +251,7 @@ export default function EnergiaSection({ user, users, contacts }) {
   );
 
   async function quickDelete(p) {
-    if (!window.confirm(`¿Eliminar el proceso de "${p.contacts?.name || 'este cliente'}"? No se puede deshacer.`)) return;
+    if (!window.confirm(`¿Eliminar el suministro de "${p.contacts?.name || 'este cliente'}"? No se puede deshacer.`)) return;
     const { error } = await supabase.from('energia_procesos').delete().eq('id', p.id);
     if (error) { alert(`Error: ${error.message}`); return; }
     handleDeleted(p.id);
@@ -277,7 +286,7 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
         </button>
         <div style={{ flex:1, minWidth:200 }}>
           <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
-            {isNew ? 'Nuevo proceso' : (proc.contacts?.name || 'Ficha de proceso')}
+            {isNew ? 'Nuevo suministro' : (proc.contacts?.name || 'Ficha de suministro')}
           </h1>
           {proc && (
             <p style={{ fontSize:12, color:'#9ca3af' }}>
@@ -321,9 +330,9 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
 
 function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onSaved, onDeleted }) {
   const initForm = () => proceso ? {
-    contact_id: proceso.contact_id||'', cups: proceso.cups||'', tarifa_actual: proceso.tarifa_actual||'2.0TD',
-    comercializadora_actual: proceso.comercializadora_actual||'', consumo_anual_kwh: proceso.consumo_anual_kwh ?? '',
-    importe_factura_eur: proceso.importe_factura_eur ?? '', fecha_factura: proceso.fecha_factura||'',
+    contact_id: proceso.contact_id||'', tipo_suministro: proceso.tipo_suministro||'luz',
+    cups: proceso.cups||'', tarifa_actual: proceso.tarifa_actual||'2.0TD',
+    comercializadora_actual: proceso.comercializadora_actual||'', direccion_suministro: proceso.direccion_suministro||'',
     comercial_id: proceso.comercial_id||'', notas: proceso.notas||'',
   } : { ...EMPTY_FORM, comercial_id: user.id };
 
@@ -331,15 +340,20 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadOk, setUploadOk] = useState(false);
+  const [sendError, setSendError] = useState(false);
   const [cSearch, setCSearch] = useState('');
   const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
-  const numOrNull = v => (v !== '' && v !== null && v !== undefined) ? Number(v) : null;
+
+  const tarifasDisponibles = form.tipo_suministro === 'gas' ? TARIFAS_GAS : TARIFAS_LUZ;
 
   const basePayload = () => ({
-    contact_id: form.contact_id || null, cups: form.cups || null, tarifa_actual: form.tarifa_actual || null,
+    contact_id: form.contact_id || null, tipo_suministro: form.tipo_suministro || 'luz',
+    cups: form.cups || null, tarifa_actual: form.tarifa_actual || null,
     comercializadora_actual: form.comercializadora_actual || null,
-    consumo_anual_kwh: numOrNull(form.consumo_anual_kwh), importe_factura_eur: numOrNull(form.importe_factura_eur),
-    fecha_factura: form.fecha_factura || null, comercial_id: form.comercial_id || null, notas: form.notas || null,
+    direccion_suministro: form.direccion_suministro || null,
+    comercial_id: form.comercial_id || null, notas: form.notas || null,
   });
 
   const handleSave = async (extra = {}, busySetter = setSaving) => {
@@ -361,17 +375,88 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         rec = data;
       }
       onSaved(rec);
+      return rec;
     } catch (e) {
       alert(`Error: ${e.message}`);
+      return null;
     } finally {
       busySetter(false);
     }
   };
 
-  const handleEnviarPartner = () => handleSave({ estado:'enviada_partner', fecha_envio_partner: today() }, setSending);
+  const handleFacturaChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    let rec = proceso;
+    if (isNew) {
+      rec = await handleSave();
+      if (!rec) return;
+    }
+
+    setUploading(true);
+    setUploadOk(false);
+    try {
+      const compressed = await compressFileIfPdf(file);
+      const path = `energia/${rec.id}/${Date.now()}.pdf`;
+      const { data, error } = await supabase.storage
+        .from('facturas-energia')
+        .upload(path, compressed, { contentType:'application/pdf', upsert:true });
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage.from('facturas-energia').getPublicUrl(data.path);
+
+      const { data: updated, error: updError } = await supabase.from('energia_procesos')
+        .update({ factura_url: urlData.publicUrl }).eq('id', rec.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (updError) throw updError;
+
+      onSaved(updated);
+      setUploadOk(true);
+    } catch (err) {
+      alert(`Error al subir la factura: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEnviarEstudio = async () => {
+    setSending(true);
+    setSendError(false);
+    try {
+      const contacto = contacts.find(c => c.id === form.contact_id);
+      const res = await fetch('https://n8n.gespronet.cloud/webhook/energia-estudio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proceso_id: proceso.id,
+          tipo_suministro: proceso.tipo_suministro,
+          cliente_nombre: `${contacto?.name || ''}`.trim(),
+          cups: proceso.cups,
+          tarifa_actual: proceso.tarifa_actual,
+          direccion_suministro: proceso.direccion_suministro,
+          factura_url: proceso.factura_url,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const fechaSolicitud = new Date().toISOString();
+      const { data, error } = await supabase.from('energia_procesos')
+        .update({ estado:'enviada_partner', fecha_solicitud_estudio: fechaSolicitud, fecha_envio_partner: today() })
+        .eq('id', proceso.id)
+        .select('*, contacts(name, phone), users(name)').single();
+      if (error) throw error;
+      onSaved(data);
+    } catch (e) {
+      setSendError(true);
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleDelete = async () => {
-    if (!window.confirm('¿Eliminar este proceso? No se puede deshacer.')) return;
+    if (!window.confirm('¿Eliminar este suministro? No se puede deshacer.')) return;
     setDeleting(true);
     const { error } = await supabase.from('energia_procesos').delete().eq('id', proceso.id);
     if (error) { alert(`Error: ${error.message}`); setDeleting(false); return; }
@@ -381,8 +466,32 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
   const selCon = contacts.find(c => c.id === form.contact_id);
   const filtCon = cSearch ? contacts.filter(c => c.name?.toLowerCase().includes(cSearch.toLowerCase())).slice(0,15) : [];
 
+  const puedeEnviarEstudio = !isNew && proceso && form.contact_id && proceso.cups && proceso.direccion_suministro
+    && proceso.factura_url && !['enviada_partner','opciones_recibidas','seleccionada','docs_solicitados','contratado','seguimiento'].includes(proceso.estado);
+
   return (
     <div>
+      <Sec title="Tipo de suministro">
+        <div style={{ display:'flex', gap:10 }}>
+          {[{ v:'luz', l:'⚡ Luz' }, { v:'gas', l:'🔥 Gas' }].map(opt => (
+            <button key={opt.v} type="button" disabled={!canEdit}
+              onClick={() => {
+                set('tipo_suministro', opt.v);
+                const nuevasTarifas = opt.v === 'gas' ? TARIFAS_GAS : TARIFAS_LUZ;
+                if (!nuevasTarifas.includes(form.tarifa_actual)) set('tarifa_actual', nuevasTarifas[0]);
+              }}
+              style={{
+                padding:'14px 28px', borderRadius:10, fontSize:15, fontWeight:800, cursor: canEdit ? 'pointer' : 'default',
+                border: form.tipo_suministro === opt.v ? `2px solid ${BRAND}` : '1.5px solid #dde2f0',
+                background: form.tipo_suministro === opt.v ? '#eef1fb' : 'white',
+                color: form.tipo_suministro === opt.v ? BRAND : '#374151',
+              }}>
+              {opt.l}
+            </button>
+          ))}
+        </div>
+      </Sec>
+
       <Sec title="Cliente">
         <div style={{ position:'relative' }}>
           <FL>Cliente</FL>
@@ -411,19 +520,17 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         </div>
       </Sec>
 
-      <Sec title="Factura actual">
+      <Sec title="Suministro actual">
         <Grid2>
-          <div><FL>CUPS</FL><input className="fi" value={form.cups} onChange={e => set('cups', e.target.value)} placeholder="ES0031..." /></div>
+          <div><FL>CUPS del suministro</FL><input className="fi" value={form.cups} onChange={e => set('cups', e.target.value)} placeholder="ES0031..." /></div>
           <div>
             <FL>Tarifa actual</FL>
             <select className="fi" value={form.tarifa_actual} onChange={e => set('tarifa_actual', e.target.value)}>
-              {TARIFAS.map(t => <option key={t} value={t}>{t}</option>)}
+              {tarifasDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div><FL>Comercializadora actual</FL><input className="fi" value={form.comercializadora_actual} onChange={e => set('comercializadora_actual', e.target.value)} /></div>
-          <div><FL>Consumo anual (kWh)</FL><input className="fi" type="number" value={form.consumo_anual_kwh} onChange={e => set('consumo_anual_kwh', e.target.value)} /></div>
-          <div><FL>Importe última factura (€)</FL><input className="fi" type="number" value={form.importe_factura_eur} onChange={e => set('importe_factura_eur', e.target.value)} /></div>
-          <div><FL>Fecha factura</FL><input className="fi" type="date" value={form.fecha_factura} onChange={e => set('fecha_factura', e.target.value)} /></div>
+          <div><FL>Dirección del suministro</FL><input className="fi" value={form.direccion_suministro} onChange={e => set('direccion_suministro', e.target.value)} /></div>
           <div>
             <FL>Comercial asignado</FL>
             <select className="fi" value={form.comercial_id} onChange={e => set('comercial_id', e.target.value)}>
@@ -439,24 +546,49 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         </div>
       </Sec>
 
+      <Sec title="Factura">
+        {proceso?.factura_url && (
+          <p style={{ fontSize:13, marginBottom:10 }}>
+            <a href={proceso.factura_url} target="_blank" rel="noreferrer" style={{ color:BRAND, fontWeight:700 }}>📄 Ver factura actual</a>
+          </p>
+        )}
+        {canEdit && (
+          <div>
+            <FL>{proceso?.factura_url ? 'Reemplazar factura (PDF)' : 'Subir factura (PDF)'}</FL>
+            <input type="file" accept=".pdf" disabled={uploading} onChange={handleFacturaChange} />
+            {uploading && <p style={{ fontSize:12, color:'#9ca3af', marginTop:6 }}>Subiendo...</p>}
+            {!uploading && uploadOk && <p style={{ fontSize:12, color:'#10b981', fontWeight:700, marginTop:6 }}>✅ Factura subida</p>}
+          </div>
+        )}
+      </Sec>
+
       {!canEdit ? (
-        <p style={{ fontSize:12, color:'#9ca3af' }}>No tienes permiso para editar este proceso.</p>
+        <p style={{ fontSize:12, color:'#9ca3af' }}>No tienes permiso para editar este suministro.</p>
       ) : (
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8, flexWrap:'wrap', gap:10 }}>
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
                 style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
-                {deleting ? 'Eliminando...' : '🗑 Eliminar proceso'}
+                {deleting ? 'Eliminando...' : '🗑 Eliminar suministro'}
               </button>
             )}
           </div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : (isNew ? '💾 Crear proceso' : '💾 Guardar')}</button>
-            {!isNew && (
-              <button className="btn-p" onClick={handleEnviarPartner} disabled={sending}>
-                {sending ? 'Enviando...' : '📤 Marcar como enviada al partner'}
-              </button>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8 }}>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : (isNew ? '💾 Crear suministro' : '💾 Guardar')}</button>
+              {puedeEnviarEstudio && (
+                <button onClick={handleEnviarEstudio} disabled={sending}
+                  style={{ padding:'9px 16px', borderRadius:8, border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor: sending ? 'not-allowed' : 'pointer' }}>
+                  {sending ? 'Enviando...' : '📤 Enviar a estudio'}
+                </button>
+              )}
+            </div>
+            {sendError && <span style={{ fontSize:12, color:'#dc2626', fontWeight:700 }}>❌ Error al enviar. Inténtalo de nuevo.</span>}
+            {proceso?.fecha_solicitud_estudio && (
+              <span className="tag" style={{ background:'#d1fae5', color:'#10b981', fontSize:12, padding:'5px 12px', fontWeight:700 }}>
+                ✅ Estudio enviado el {fmtFechaLarga(proceso.fecha_solicitud_estudio)}
+              </span>
             )}
           </div>
         </div>
