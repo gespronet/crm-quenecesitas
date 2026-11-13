@@ -607,11 +607,7 @@ function TabFotos({ property, onPropUpdated }) {
     const files = Array.from(e.target.files);
     e.target.value = '';
     if (!files.length) return;
-    const remaining = 20 - photos.length;
-    if (remaining <= 0) { alert('Máximo 20 fotos'); return; }
-    const toUpload = files.slice(0, remaining);
-    if (files.length > remaining) alert(`Solo se subirán ${remaining} foto(s): el máximo son 20 por inmueble.`);
-    await handleUploadMultiple(toUpload);
+    await handleUploadMultiple(files);
   };
 
   const handleUploadMultiple = async (files) => {
@@ -676,21 +672,21 @@ function TabFotos({ property, onPropUpdated }) {
 
   const handleImgLoad = (photoId) => (e) => {
     const { naturalWidth, naturalHeight } = e.target;
-    setOrientations(o => ({ ...o, [photoId]: naturalWidth >= naturalHeight ? '16/9' : '4/5' }));
+    setOrientations(o => ({ ...o, [photoId]: `${naturalWidth}/${naturalHeight}` }));
   };
 
   return (
     <div style={{ maxWidth:820 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <div>
-          <p style={{ fontSize:13, fontWeight:600, color:'#374151' }}>{photos.length}/20 fotos</p>
+          <p style={{ fontSize:13, fontWeight:600, color:'#374151' }}>{photos.length} {photos.length === 1 ? 'foto' : 'fotos'}</p>
           <p style={{ fontSize:11, color:'#9ca3af' }}>Arrastra para reordenar · La primera foto es la imagen principal</p>
         </div>
-        <label style={{ cursor: photos.length >= 20 || uploadProgress ? 'not-allowed' : 'pointer' }}>
-          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:8, background: photos.length >= 20 || uploadProgress ? '#9ca3af' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
+        <label style={{ cursor: uploadProgress ? 'not-allowed' : 'pointer' }}>
+          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:8, background: uploadProgress ? '#9ca3af' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
             {uploadProgress ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}...` : '+ Añadir fotos'}
           </span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} disabled={photos.length >= 20 || !!uploadProgress} multiple />
+          <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} disabled={!!uploadProgress} multiple />
         </label>
       </div>
 
@@ -725,7 +721,7 @@ function TabFotos({ property, onPropUpdated }) {
           >
             {signedUrls[photo.id] ? (
               <img src={signedUrls[photo.id]} alt="" onLoad={handleImgLoad(photo.id)}
-                style={{ width:'100%', aspectRatio: orientations[photo.id] || '4/5', objectFit:'contain', display:'block', background:'#111' }} />
+                style={{ width:'100%', aspectRatio: orientations[photo.id] || 'auto', objectFit:'contain', display:'block', background:'#111' }} />
             ) : (
               <div style={{ width:'100%', aspectRatio:'4/5', display:'flex', alignItems:'center', justifyContent:'center', color:'#9ca3af', fontSize:11 }}>Cargando...</div>
             )}
