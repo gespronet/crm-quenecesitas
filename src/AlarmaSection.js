@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
 
-const BRAND = '#002292';
+const BRAND = '#00208F';
 
 const PROVEEDORES_ALARMA = {
   prosegur: {
@@ -52,7 +52,7 @@ const PROVEEDORES_ALARMA = {
 const PROVEEDOR_KEYS = Object.keys(PROVEEDORES_ALARMA);
 
 const ESTADOS_ALARMA = {
-  prospecto: { label:'Prospecto',   color:'#6b7280', bg:'#f3f4f6' },
+  prospecto: { label:'Prospecto',   color:'#5B6178', bg:'#f3f4f6' },
   contacto:  { label:'Contacto',    color:'#2563eb', bg:'#dbeafe' },
   visita:    { label:'Visita',      color:'#7c3aed', bg:'#f5f3ff' },
   propuesta: { label:'Propuesta',   color:'#0891b2', bg:'#ecfeff' },
@@ -109,7 +109,7 @@ function isSameMonth(dateStr) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -170,8 +170,8 @@ export default function AlarmaSection({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🔐 Alarmas</h1>
-          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} contratos</p>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🔐 Alarmas</h1>
+          <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} contratos</p>
         </div>
         <button className="btn-p" onClick={() => setModal('new')}>+ Nuevo contrato</button>
       </div>
@@ -186,8 +186,8 @@ export default function AlarmaSection({ user, users, contacts }) {
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
             <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Barlow Condensed',sans-serif" }}>{s.v}</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{s.l}</div>
+            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+            <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -218,9 +218,9 @@ export default function AlarmaSection({ user, users, contacts }) {
       </div>
 
       {loading ? (
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {visibles.length === 0 ? 'No hay contratos. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -228,9 +228,9 @@ export default function AlarmaSection({ user, users, contacts }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Cliente','Proveedor','Tipo','Pack','Cuota €/mes','Estado', ...(admin?['Comisión esperada']:[]), 'Fecha contrato','Fecha instalación',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -241,25 +241,25 @@ export default function AlarmaSection({ user, users, contacts }) {
                   const estado = ESTADOS_ALARMA[c.estado] || ESTADOS_ALARMA.prospecto;
                   const canEdit = admin || c.comercial_id === user.id;
                   return (
-                    <tr key={c.id} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
+                    <tr key={c.id} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
                       <td style={{ padding:'9px 13px' }}>
                         <button onClick={() => setModal(c)} style={{ fontSize:13, fontWeight:700, color:BRAND, background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'left' }}>
                           {c.contacts?.name || 'Sin cliente'}
                         </button>
-                        {c.contacts?.phone && <div style={{ fontSize:11, color:'#9ca3af' }}>{c.contacts.phone}</div>}
+                        {c.contacts?.phone && <div style={{ fontSize:11, color:'#8A8FA3' }}>{c.contacts.phone}</div>}
                       </td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {prov && <span className="tag" style={{ background:prov.bg, color:prov.color }}>{prov.icon} {prov.label}</span>}
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', textTransform:'capitalize' }}>{c.tipo_cliente}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{pack?.nombre || c.pack || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(c.cuota_eur)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', textTransform:'capitalize' }}>{c.tipo_cliente}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{pack?.nombre || c.pack || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(c.cuota_eur)}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
                       {admin && <td style={{ padding:'9px 13px', fontSize:12, color:'#059669', fontWeight:700, whiteSpace:'nowrap' }}>{fmt(c.comision_esperada)}</td>}
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{c.fecha_contrato || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{c.fecha_instalacion || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{c.fecha_contrato || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{c.fecha_instalacion || '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                           {canEdit && <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setModal(c)}>✏️</button>}
@@ -426,7 +426,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
           <div style={{ marginBottom:14, position:'relative' }}>
             <FL>Cliente</FL>
             {selCon ? (
-              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8 }}>
                 <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
                 <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
               </div>
@@ -434,11 +434,11 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
               <>
                 <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
                 {filtCon.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #dde2f0', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                     {filtCon.map(c => (
                       <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
-                        style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #f0f3fb' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#f0f3fb'}
+                        style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F6F5F1'}
                         onMouseLeave={e => e.currentTarget.style.background=''}>
                         {c.name}{c.phone ? ` · ${c.phone}` : ''}
                       </div>
@@ -458,12 +458,12 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                 <button key={key} onClick={() => selectProveedor(key)}
                   style={{
                     padding:'14px 12px', borderRadius:12, cursor:'pointer', textAlign:'center',
-                    border: on ? `2px solid ${p.color}` : '2px solid #e8ecf8',
+                    border: on ? `2px solid ${p.color}` : '2px solid #E4E2DA',
                     background: on ? p.bg : 'white',
                     transition:'all .15s',
                   }}>
                   <div style={{ fontSize:26, marginBottom:6 }}>{p.icon}</div>
-                  <div style={{ fontSize:13, fontWeight:800, color: on ? p.color : '#374151' }}>{p.label}</div>
+                  <div style={{ fontSize:13, fontWeight:800, color: on ? p.color : '#3A4058' }}>{p.label}</div>
                 </button>
               );
             })}
@@ -477,9 +477,9 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                   <button key={t} onClick={() => selectTipoCliente(t)}
                     style={{
                       padding:'7px 18px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700, textTransform:'capitalize',
-                      border: form.tipo_cliente===t ? `1.5px solid ${BRAND}` : '1.5px solid #dde2f0',
+                      border: form.tipo_cliente===t ? `1.5px solid ${BRAND}` : '1.5px solid #C9CBD3',
                       background: form.tipo_cliente===t ? BRAND : 'white',
-                      color: form.tipo_cliente===t ? 'white' : '#374151',
+                      color: form.tipo_cliente===t ? 'white' : '#3A4058',
                     }}>{t}</button>
                 ))}
               </div>
@@ -492,9 +492,9 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                   <button onClick={toggleRenove}
                     style={{
                       padding:'7px 18px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700,
-                      border: form.es_renove ? '1.5px solid #059669' : '1.5px solid #dde2f0',
+                      border: form.es_renove ? '1.5px solid #059669' : '1.5px solid #C9CBD3',
                       background: form.es_renove ? '#d1fae5' : 'white',
-                      color: form.es_renove ? '#059669' : '#374151',
+                      color: form.es_renove ? '#059669' : '#3A4058',
                     }}>{form.es_renove ? '✓ Renove' : 'No es Renove'}</button>
                   {form.es_renove && <span className="tag" style={{ background:'#d1fae5', color:'#059669', fontWeight:800 }}>Comisión 200€</span>}
                 </div>
@@ -519,7 +519,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                     <FL>Extras</FL>
                     <textarea value={form.extras} onChange={e => set('extras', e.target.value)} rows={2}
                       placeholder="2 Shocksensors adicionales, Cámara exterior..."
-                      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:56, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+                      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:56, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
                   </div>
                   <div><FL>Instalación (€)</FL><input className="fi" type="number" value={form.instalacion_eur} onChange={e => set('instalacion_eur', e.target.value)} /></div>
                   <div><FL>Cuota (€/mes)</FL><input className="fi" type="number" value={form.cuota_eur} onChange={e => set('cuota_eur', e.target.value)} /></div>
@@ -533,8 +533,8 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
             </div>
 
             {/* Panel lateral informativo */}
-            <div style={{ background:'#f8f9fd', borderRadius:12, padding:16, position:'sticky', top:0 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:10 }}>Resumen</div>
+            <div style={{ background:'#F6F5F1', borderRadius:12, padding:16, position:'sticky', top:0 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#5B6178', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:10 }}>Resumen</div>
               {prov && (
                 <div style={{ marginBottom:12 }}>
                   <span className="tag" style={{ background:prov.bg, color:prov.color }}>{prov.icon} {prov.label}</span>
@@ -542,12 +542,12 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
               )}
               <div style={{ background:'#d1fae5', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#059669', textTransform:'uppercase', letterSpacing:'.5px' }}>Comisión estimada</div>
-                <div style={{ fontSize:24, fontWeight:800, color:'#059669', fontFamily:"'Barlow Condensed',sans-serif" }}>
+                <div style={{ fontSize:24, fontWeight:800, color:'#059669', fontFamily:"'Poppins',sans-serif" }}>
                   {comisionEstimada !== null ? fmt(comisionEstimada) : '—'}
                 </div>
               </div>
               {packSeleccionado && (
-                <div style={{ fontSize:12, color:'#374151', marginBottom:12 }}>
+                <div style={{ fontSize:12, color:'#3A4058', marginBottom:12 }}>
                   <strong>{packSeleccionado.nombre}</strong><br/>
                   Instalación {fmt(packSeleccionado.instalacion)} · Cuota {fmt(packSeleccionado.cuota)}/mes
                 </div>
@@ -586,11 +586,11 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas',e.target.value)}
               placeholder="Notas internas sobre el contrato, negociación, condiciones..." rows={4}
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
@@ -618,7 +618,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
 function Sec({ title, children }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #E4E2DA' }}>
         {title}
       </h3>
       {children}
@@ -631,5 +631,5 @@ function Grid2({ children }) {
 }
 
 function FL({ children }) {
-  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
+  return <label style={{ fontSize:11, fontWeight:700, color:'#3A4058', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }

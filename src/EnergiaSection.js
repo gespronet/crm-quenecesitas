@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, compressFileIfPdf } from './utils/supabase';
 
-const BRAND = '#002292';
+const BRAND = '#00208F';
 
 const ESTADOS_ENERGIA = {
   factura_recibida:   { label:'Factura recibida',    color:'#f59e0b', bg:'#fffbeb' },
@@ -62,7 +62,7 @@ function fmtFechaLarga(iso) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -143,8 +143,8 @@ export default function EnergiaSection({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>⚡ Energía</h1>
-          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} suministros</p>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>⚡ Energía</h1>
+          <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} suministros</p>
         </div>
         <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo suministro</button>
       </div>
@@ -159,8 +159,8 @@ export default function EnergiaSection({ user, users, contacts }) {
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
             <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Barlow Condensed',sans-serif" }}>{s.v}</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{s.l}</div>
+            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+            <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -188,9 +188,9 @@ export default function EnergiaSection({ user, users, contacts }) {
       </div>
 
       {loading ? (
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {visibles.length === 0 ? 'No hay suministros. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -198,9 +198,9 @@ export default function EnergiaSection({ user, users, contacts }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Cliente','Tipo','Comercializadora actual','Factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -211,23 +211,23 @@ export default function EnergiaSection({ user, users, contacts }) {
                   const dias = daysUntil(p.fecha_vencimiento);
                   const venceProximo = p.estado === 'contratado' || p.estado === 'seguimiento' ? (dias !== null && dias < 90) : false;
                   return (
-                    <tr key={p.id} className="tr" style={{ borderTop:'1px solid #f0f3fb', cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
+                    <tr key={p.id} className="tr" style={{ borderTop:'1px solid #F6F5F1', cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
                       <td style={{ padding:'9px 13px', fontSize:13, fontWeight:700, color:BRAND }}>{p.contacts?.name || 'Sin cliente'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background: p.tipo_suministro==='gas' ? '#fff7ed' : '#fffbeb', color: p.tipo_suministro==='gas' ? '#f97316' : '#f59e0b' }}>
                           {p.tipo_suministro === 'gas' ? '🔥 Gas' : '⚡ Luz'}
                         </span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.comercializadora_actual || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{p.comercializadora_actual || '—'}</td>
                       <td style={{ padding:'9px 13px', fontSize:14, textAlign:'center' }}>{p.factura_url ? '📄' : '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.estado === 'contratado' || p.estado === 'seguimiento' ? (p.comercializadora_nueva || '—') : '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, whiteSpace:'nowrap', color: venceProximo ? '#dc2626' : '#374151', fontWeight: venceProximo ? 700 : 400 }}>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{p.estado === 'contratado' || p.estado === 'seguimiento' ? (p.comercializadora_nueva || '—') : '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, whiteSpace:'nowrap', color: venceProximo ? '#dc2626' : '#3A4058', fontWeight: venceProximo ? 700 : 400 }}>
                         {(p.estado === 'contratado' || p.estado === 'seguimiento') ? (p.fecha_vencimiento || '—') : '—'}
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                           <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setSelectedId(p.id)}>📂 Abrir</button>
@@ -281,15 +281,15 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
     <div>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onBack}
-          style={{ background:'none', border:'1.5px solid #dde2f0', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#374151' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1, minWidth:200 }}>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
             {isNew ? 'Nuevo suministro' : (proc.contacts?.name || 'Ficha de suministro')}
           </h1>
           {proc && (
-            <p style={{ fontSize:12, color:'#9ca3af' }}>
+            <p style={{ fontSize:12, color:'#8A8FA3' }}>
               {proc.comercializadora_actual || 'Sin comercializadora actual'}
               {estado && <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>}
             </p>
@@ -482,9 +482,9 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
               }}
               style={{
                 padding:'14px 28px', borderRadius:10, fontSize:15, fontWeight:800, cursor: canEdit ? 'pointer' : 'default',
-                border: form.tipo_suministro === opt.v ? `2px solid ${BRAND}` : '1.5px solid #dde2f0',
+                border: form.tipo_suministro === opt.v ? `2px solid ${BRAND}` : '1.5px solid #C9CBD3',
                 background: form.tipo_suministro === opt.v ? '#eef1fb' : 'white',
-                color: form.tipo_suministro === opt.v ? BRAND : '#374151',
+                color: form.tipo_suministro === opt.v ? BRAND : '#3A4058',
               }}>
               {opt.l}
             </button>
@@ -496,7 +496,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         <div style={{ position:'relative' }}>
           <FL>Cliente</FL>
           {selCon ? (
-            <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, maxWidth:400 }}>
+            <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, maxWidth:400 }}>
               <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
               <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
             </div>
@@ -504,11 +504,11 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
             <div style={{ maxWidth:400 }}>
               <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
               {filtCon.length > 0 && (
-                <div style={{ position:'absolute', top:'100%', left:0, right:0, maxWidth:400, background:'white', border:'1.5px solid #dde2f0', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, maxWidth:400, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                   {filtCon.map(c => (
                     <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
-                      style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #f0f3fb' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#f0f3fb'}
+                      style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F6F5F1'}
                       onMouseLeave={e => e.currentTarget.style.background=''}>
                       {c.name}{c.phone ? ` · ${c.phone}` : ''}
                     </div>
@@ -542,7 +542,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         <div style={{ marginTop:12 }}>
           <FL>Notas generales</FL>
           <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
       </Sec>
 
@@ -556,16 +556,16 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
           <div>
             <FL>{proceso?.factura_url ? 'Reemplazar factura (PDF)' : 'Subir factura (PDF)'}</FL>
             <input type="file" accept=".pdf" disabled={uploading} onChange={handleFacturaChange} />
-            {uploading && <p style={{ fontSize:12, color:'#9ca3af', marginTop:6 }}>Subiendo...</p>}
+            {uploading && <p style={{ fontSize:12, color:'#8A8FA3', marginTop:6 }}>Subiendo...</p>}
             {!uploading && uploadOk && <p style={{ fontSize:12, color:'#10b981', fontWeight:700, marginTop:6 }}>✅ Factura subida</p>}
           </div>
         )}
       </Sec>
 
       {!canEdit ? (
-        <p style={{ fontSize:12, color:'#9ca3af' }}>No tienes permiso para editar este suministro.</p>
+        <p style={{ fontSize:12, color:'#8A8FA3' }}>No tienes permiso para editar este suministro.</p>
       ) : (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8, flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8, flexWrap:'wrap', gap:10 }}>
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
@@ -635,18 +635,18 @@ function TabOpciones({ proceso, canEdit, onSaved }) {
   return (
     <div>
       <Sec title="Envío al partner">
-        <p style={{ fontSize:12, color:'#6b7280' }}>
+        <p style={{ fontSize:12, color:'#5B6178' }}>
           {proceso.fecha_envio_partner ? `Enviada al partner el ${proceso.fecha_envio_partner}` : 'Todavía no se ha registrado el envío al partner.'}
         </p>
       </Sec>
 
       <Sec title="Opciones recibidas">
         {rows.length === 0 ? (
-          <p style={{ fontSize:13, color:'#9ca3af', marginBottom:14 }}>Sin opciones registradas todavía.</p>
+          <p style={{ fontSize:13, color:'#8A8FA3', marginBottom:14 }}>Sin opciones registradas todavía.</p>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
             {rows.map((row, idx) => (
-              <div key={idx} className="card" style={{ padding:14, border: row.seleccionada ? '2px solid #06b6d4' : '1.5px solid #e8ecf8' }}>
+              <div key={idx} className="card" style={{ padding:14, border: row.seleccionada ? '2px solid #06b6d4' : '1.5px solid #E4E2DA' }}>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
                   <div><FL>Comercializadora</FL><input className="fi" value={row.comercializadora} disabled={!canEdit} onChange={e => updateRow(idx,'comercializadora',e.target.value)} /></div>
                   <div><FL>Precio kWh (€)</FL><input className="fi" type="number" step="0.0001" value={row.precio_kwh} disabled={!canEdit} onChange={e => updateRow(idx,'precio_kwh',e.target.value)} /></div>
@@ -654,7 +654,7 @@ function TabOpciones({ proceso, canEdit, onSaved }) {
                   <div style={{ gridColumn:'1/-1' }}><FL>Notas</FL><input className="fi" value={row.notas} disabled={!canEdit} onChange={e => updateRow(idx,'notas',e.target.value)} /></div>
                 </div>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10 }}>
-                  <label style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight: row.seleccionada ? 700 : 500, color: row.seleccionada ? '#06b6d4' : '#374151', cursor: canEdit ? 'pointer' : 'default' }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight: row.seleccionada ? 700 : 500, color: row.seleccionada ? '#06b6d4' : '#3A4058', cursor: canEdit ? 'pointer' : 'default' }}>
                     <input type="radio" name="opcion-sel" checked={row.seleccionada} disabled={!canEdit} onChange={() => selectRow(idx)}
                       style={{ width:15, height:15, accentColor:'#06b6d4', cursor: canEdit ? 'pointer' : 'default' }} />
                     Seleccionar esta opción
@@ -669,7 +669,7 @@ function TabOpciones({ proceso, canEdit, onSaved }) {
       </Sec>
 
       {canEdit && (
-        <div style={{ display:'flex', justifyContent:'flex-end', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'flex-end', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <button className="btn-p" onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar opciones'}</button>
         </div>
       )}
@@ -724,14 +724,14 @@ function TabDocs({ proceso, canEdit, onSaved }) {
         {proceso.opcion_seleccionada ? (
           <span className="tag" style={{ background:'#ecfeff', color:'#06b6d4', fontSize:13, padding:'5px 14px' }}>{proceso.opcion_seleccionada}</span>
         ) : (
-          <p style={{ fontSize:13, color:'#9ca3af' }}>Todavía no se ha seleccionado ninguna oferta.</p>
+          <p style={{ fontSize:13, color:'#8A8FA3' }}>Todavía no se ha seleccionado ninguna oferta.</p>
         )}
       </Sec>
 
       <Sec title="Documentación solicitada">
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
           {DOCS_CHECKLIST.map((doc, idx) => (
-            <label key={doc} style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, cursor: canEdit ? 'pointer' : 'default', fontWeight: checked[idx] ? 700 : 400, color: checked[idx] ? BRAND : '#374151' }}>
+            <label key={doc} style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, cursor: canEdit ? 'pointer' : 'default', fontWeight: checked[idx] ? 700 : 400, color: checked[idx] ? BRAND : '#3A4058' }}>
               <input type="checkbox" checked={checked[idx]} disabled={!canEdit} onChange={() => toggleDoc(idx)}
                 style={{ width:16, height:16, accentColor:BRAND, cursor: canEdit ? 'pointer' : 'default' }} />
               {checked[idx] ? '☑' : '☐'} {doc}
@@ -754,7 +754,7 @@ function TabDocs({ proceso, canEdit, onSaved }) {
           <div><FL>Fecha vencimiento contrato</FL><input className="fi" type="date" value={form.fecha_vencimiento} disabled={!canEdit} onChange={e => set('fecha_vencimiento', e.target.value)} /></div>
         </Grid2>
         {canEdit && (
-          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #e8ecf8', flexWrap:'wrap' }}>
+          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #E4E2DA', flexWrap:'wrap' }}>
             <button className="btn-g" onClick={() => handleGuardarContratacion()} disabled={savingContrato}>{savingContrato ? 'Guardando...' : '💾 Guardar contratación'}</button>
             <button className="btn-p" onClick={() => handleGuardarContratacion({ estado:'contratado' })} disabled={savingContrato}>
               {savingContrato ? 'Guardando...' : '✓ Marcar como contratado'}
@@ -792,7 +792,7 @@ function TabSeguimiento({ proceso, canEdit, onSaved }) {
     <div>
       <Sec title="Vencimiento">
         <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div><FL>Fecha vencimiento</FL><p style={{ fontSize:14, fontWeight:700, color:'#1e2a4a' }}>{proceso.fecha_vencimiento || '—'}</p></div>
+          <div><FL>Fecha vencimiento</FL><p style={{ fontSize:14, fontWeight:700, color:'#0B1233' }}>{proceso.fecha_vencimiento || '—'}</p></div>
           {alerta && <span className="tag" style={{ background:alerta.bg, color:alerta.color, fontSize:12, padding:'5px 12px', fontWeight:800 }}>{alerta.label}</span>}
         </div>
       </Sec>
@@ -804,10 +804,10 @@ function TabSeguimiento({ proceso, canEdit, onSaved }) {
         <div style={{ marginTop:12 }}>
           <FL>Notas de seguimiento</FL>
           <textarea value={form.notas} disabled={!canEdit} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
         {canEdit && (
-          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #e8ecf8', flexWrap:'wrap' }}>
+          <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #E4E2DA', flexWrap:'wrap' }}>
             <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : '💾 Guardar'}</button>
             {proceso.estado !== 'seguimiento' && (
               <button className="btn-p" onClick={() => handleSave({ estado:'seguimiento' }, setActivating)} disabled={activating}>
@@ -826,7 +826,7 @@ function TabSeguimiento({ proceso, canEdit, onSaved }) {
 function Sec({ title, children }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #E4E2DA' }}>
         {title}
       </h3>
       {children}
@@ -839,5 +839,5 @@ function Grid2({ children }) {
 }
 
 function FL({ children }) {
-  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
+  return <label style={{ fontSize:11, fontWeight:700, color:'#3A4058', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }

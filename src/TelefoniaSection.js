@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
 
-const BRAND = '#002292';
+const BRAND = '#00208F';
 
 // ─── Datos de tarifas y comisiones (LOWI) ────────────────────────────────────
 
@@ -90,7 +90,7 @@ const TIPOS_ALTA = [
 ];
 
 const ESTADOS_TELEFONIA = {
-  prospecto:        { label:'Prospecto',        color:'#6b7280', bg:'#f3f4f6' },
+  prospecto:        { label:'Prospecto',        color:'#5B6178', bg:'#f3f4f6' },
   documentacion:    { label:'Documentación',    color:'#2563eb', bg:'#dbeafe' },
   enviado_operador: { label:'Enviado operador', color:'#7c3aed', bg:'#f5f3ff' },
   en_tramite:       { label:'En trámite',       color:'#d97706', bg:'#fef3c7' },
@@ -215,7 +215,7 @@ function getChecklist(operador, tipoCliente) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -287,8 +287,8 @@ export default function TelefoniaSection({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>📱 Telefonía</h1>
-          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} contratos</p>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>📱 Telefonía</h1>
+          <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} contratos</p>
         </div>
         <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo contrato</button>
       </div>
@@ -304,8 +304,8 @@ export default function TelefoniaSection({ user, users, contacts }) {
           ].map(s => (
             <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
               <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-              <div style={{ fontSize:20, fontWeight:800, color:s.c, fontFamily:"'Barlow Condensed',sans-serif" }}>{s.v}</div>
-              <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{s.l}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+              <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
             </div>
           ))}
         </div>
@@ -335,9 +335,9 @@ export default function TelefoniaSection({ user, users, contacts }) {
       </div>
 
       {loading ? (
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {visibles.length === 0 ? 'No hay contratos. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -345,9 +345,9 @@ export default function TelefoniaSection({ user, users, contacts }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Cliente','Operador','Tipo','Tarifa','Precio €/mes','Estado', ...(admin?['Comisión €','⚠️']:[]), 'Fecha activación',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -358,20 +358,20 @@ export default function TelefoniaSection({ user, users, contacts }) {
                   const tipoLabel = TIPOS_CONTRATO.find(t => t.id === c.tipo_contrato)?.label || c.tipo_contrato;
                   const canEdit = admin || c.comercial_id === user.id;
                   return (
-                    <tr key={c.id} className="tr" style={{ borderTop:'1px solid #f0f3fb', cursor:'pointer' }} onClick={() => setSelectedId(c.id)}>
+                    <tr key={c.id} className="tr" style={{ borderTop:'1px solid #F6F5F1', cursor:'pointer' }} onClick={() => setSelectedId(c.id)}>
                       <td style={{ padding:'9px 13px', fontSize:13, fontWeight:700, color:BRAND }}>{c.contacts?.name || 'Sin cliente'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {op && <span className="tag" style={{ background:op.bg, color:op.color }}>{op.icon} {op.label}</span>}
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{tipoLabel}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{resumenTarifa(c)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(c.precio_mes)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{tipoLabel}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{resumenTarifa(c)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(c.precio_mes)}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
                       {admin && <td style={{ padding:'9px 13px', fontSize:12, color:'#059669', fontWeight:700, whiteSpace:'nowrap' }}>{fmt(c.comision_estimada)}</td>}
                       {admin && <td style={{ padding:'9px 13px', textAlign:'center' }}>{c.clawback_riesgo ? '⚠️' : ''}</td>}
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{c.fecha_activacion || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{c.fecha_activacion || '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                           {canEdit && <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setSelectedId(c.id)}>✏️</button>}
@@ -537,15 +537,15 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
     <div>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onBack}
-          style={{ background:'none', border:'1.5px solid #dde2f0', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#374151' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1, minWidth:200 }}>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:24, fontWeight:800, color:BRAND }}>
             {isNew ? 'Nuevo contrato' : (contract.contacts?.name || 'Ficha de contrato')}
           </h1>
           {!isNew && (
-            <p style={{ fontSize:12, color:'#9ca3af' }}>
+            <p style={{ fontSize:12, color:'#8A8FA3' }}>
               <span style={{ padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:(ESTADOS_TELEFONIA[contract.estado]||{}).bg, color:(ESTADOS_TELEFONIA[contract.estado]||{}).color }}>
                 {(ESTADOS_TELEFONIA[contract.estado]||{}).label}
               </span>
@@ -565,7 +565,7 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
           <div style={{ position:'relative', marginBottom:16, maxWidth:400 }}>
             <FL>Cliente</FL>
             {selCon ? (
-              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8 }}>
                 <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
                 <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
               </div>
@@ -573,11 +573,11 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
               <>
                 <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
                 {filtCon.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #dde2f0', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                     {filtCon.map(c => (
                       <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
-                        style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #f0f3fb' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#f0f3fb'}
+                        style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F6F5F1'}
                         onMouseLeave={e => e.currentTarget.style.background=''}>
                         {c.name}{c.phone ? ` · ${c.phone}` : ''}
                       </div>
@@ -596,11 +596,11 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                 <button key={key} onClick={() => selectOperador(key)}
                   style={{
                     padding:'16px 12px', borderRadius:12, cursor:'pointer', textAlign:'center',
-                    border: on ? `2px solid ${op.color}` : '2px solid #e8ecf8',
+                    border: on ? `2px solid ${op.color}` : '2px solid #E4E2DA',
                     background: on ? op.bg : 'white',
                   }}>
                   <div style={{ fontSize:26, marginBottom:6 }}>{op.icon}</div>
-                  <div style={{ fontSize:14, fontWeight:800, color: on ? op.color : '#374151' }}>{op.label}</div>
+                  <div style={{ fontSize:14, fontWeight:800, color: on ? op.color : '#3A4058' }}>{op.label}</div>
                 </button>
               );
             })}
@@ -620,9 +620,9 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                   title={disabled ? 'Solo disponible con Vodafone' : undefined}
                   style={{
                     padding:'7px 16px', borderRadius:8, fontSize:12, fontWeight:700,
-                    border: on ? `1.5px solid ${BRAND}` : '1.5px solid #dde2f0',
+                    border: on ? `1.5px solid ${BRAND}` : '1.5px solid #C9CBD3',
                     background: on ? BRAND : disabled ? '#f3f4f6' : 'white',
-                    color: on ? 'white' : disabled ? '#c0c8e0' : '#374151',
+                    color: on ? 'white' : disabled ? '#c0c8e0' : '#3A4058',
                     cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1,
                   }}>{tc.label}</button>
               );
@@ -650,8 +650,8 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                         {['fit','no_fit'].map(h => (
                           <button key={h} onClick={() => applyPrecio({ huella:h })}
                             style={{ padding:'7px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
-                              border: form.huella===h ? '1.5px solid #059669' : '1.5px solid #dde2f0',
-                              background: form.huella===h ? '#d1fae5' : 'white', color: form.huella===h ? '#059669' : '#374151' }}>
+                              border: form.huella===h ? '1.5px solid #059669' : '1.5px solid #C9CBD3',
+                              background: form.huella===h ? '#d1fae5' : 'white', color: form.huella===h ? '#059669' : '#3A4058' }}>
                             {h==='fit' ? 'Fit' : 'No Fit'}
                           </button>
                         ))}
@@ -661,8 +661,8 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                       <FL>¿Tarifa privada?</FL>
                       <button onClick={() => applyPrecio({ tarifa_privada: !form.tarifa_privada, fibra_mb:'', movil_gb:'' })}
                         style={{ padding:'7px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
-                          border: form.tarifa_privada ? '1.5px solid #7c3aed' : '1.5px solid #dde2f0',
-                          background: form.tarifa_privada ? '#f5f3ff' : 'white', color: form.tarifa_privada ? '#7c3aed' : '#374151' }}>
+                          border: form.tarifa_privada ? '1.5px solid #7c3aed' : '1.5px solid #C9CBD3',
+                          background: form.tarifa_privada ? '#f5f3ff' : 'white', color: form.tarifa_privada ? '#7c3aed' : '#3A4058' }}>
                         {form.tarifa_privada ? '✓ Privada' : 'Tarifa estándar'}
                       </button>
                     </div>
@@ -703,7 +703,7 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                     <FL>Extras streaming</FL>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:'10px 24px' }}>
                       {Object.entries(STREAMING_EXTRAS).map(([key,ex]) => (
-                        <label key={key} style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, cursor:'pointer', fontWeight: form.streaming.includes(key) ? 700 : 400, color: form.streaming.includes(key) ? BRAND : '#374151' }}>
+                        <label key={key} style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, cursor:'pointer', fontWeight: form.streaming.includes(key) ? 700 : 400, color: form.streaming.includes(key) ? BRAND : '#3A4058' }}>
                           <input type="checkbox" checked={form.streaming.includes(key)} onChange={() => toggleStreaming(key)}
                             style={{ width:15, height:15, accentColor:BRAND, cursor:'pointer' }} />
                           {ex.label} (+{ex.precio}€/mes)
@@ -719,7 +719,7 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                         <select className="fi" style={{ maxWidth:140 }} value={l.gb} onChange={e => updateLineaGb(idx, e.target.value)}>
                           {[5,50,100,150,300].map(v => <option key={v} value={v}>{v}GB</option>)}
                         </select>
-                        <span style={{ fontSize:12, color:'#374151', fontWeight:600 }}>{fmt(l.precio)}/mes</span>
+                        <span style={{ fontSize:12, color:'#3A4058', fontWeight:600 }}>{fmt(l.precio)}/mes</span>
                         <button onClick={() => removeLinea(idx)} style={{ background:'none', border:'none', color:'#dc2626', fontSize:12, cursor:'pointer' }}>✕ Quitar</button>
                       </div>
                     ))}
@@ -753,8 +753,8 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                       {['fit','no_fit'].map(h => (
                         <button key={h} onClick={() => set('huella', h)}
                           style={{ padding:'7px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
-                            border: form.huella===h ? '1.5px solid #059669' : '1.5px solid #dde2f0',
-                            background: form.huella===h ? '#d1fae5' : 'white', color: form.huella===h ? '#059669' : '#374151' }}>
+                            border: form.huella===h ? '1.5px solid #059669' : '1.5px solid #C9CBD3',
+                            background: form.huella===h ? '#d1fae5' : 'white', color: form.huella===h ? '#059669' : '#3A4058' }}>
                           {h==='fit' ? 'Fit' : 'No Fit'}
                         </button>
                       ))}
@@ -784,8 +784,8 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
                 {TIPOS_ALTA.map(t => (
                   <button key={t.id} onClick={() => set('tipo_alta', t.id)}
                     style={{ padding:'7px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
-                      border: form.tipo_alta===t.id ? `1.5px solid ${BRAND}` : '1.5px solid #dde2f0',
-                      background: form.tipo_alta===t.id ? BRAND : 'white', color: form.tipo_alta===t.id ? 'white' : '#374151' }}>
+                      border: form.tipo_alta===t.id ? `1.5px solid ${BRAND}` : '1.5px solid #C9CBD3',
+                      background: form.tipo_alta===t.id ? BRAND : 'white', color: form.tipo_alta===t.id ? 'white' : '#3A4058' }}>
                     {t.label}
                   </button>
                 ))}
@@ -817,11 +817,11 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
           </div>
 
           {/* Panel comisión */}
-          <div style={{ background:'#f8f9fd', borderRadius:12, padding:16, position:'sticky', top:0 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:10 }}>Comisión</div>
+          <div style={{ background:'#F6F5F1', borderRadius:12, padding:16, position:'sticky', top:0 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#5B6178', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:10 }}>Comisión</div>
             <div style={{ background:'#d1fae5', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#059669', textTransform:'uppercase', letterSpacing:'.5px' }}>Comisión estimada</div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#059669', fontFamily:"'Barlow Condensed',sans-serif" }}>
+              <div style={{ fontSize:22, fontWeight:800, color:'#059669', fontFamily:"'Poppins',sans-serif" }}>
                 {comisionBase !== null ? fmt(comisionBase) : '—'}
               </div>
             </div>
@@ -831,9 +831,9 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
               </div>
             )}
             {acelerador > 0 && comisionTotal !== null && (
-              <div style={{ fontSize:12, color:'#374151' }}>Total: <strong>{fmt(comisionTotal)}</strong></div>
+              <div style={{ fontSize:12, color:'#3A4058' }}>Total: <strong>{fmt(comisionTotal)}</strong></div>
             )}
-            <div style={{ fontSize:12, color:'#374151', marginTop:12 }}>
+            <div style={{ fontSize:12, color:'#3A4058', marginTop:12 }}>
               Precio mes: <strong>{form.precio_mes !== '' ? fmt(form.precio_mes) : '—'}</strong>
             </div>
           </div>
@@ -861,7 +861,7 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
           <Sec title={`Documentación (${OPERADORES[form.operador]?.label || 'operador'} · ${form.tipo_cliente})`}>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {checklist.map(doc => (
-                <label key={doc.key} style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, cursor:'pointer', fontWeight: form[doc.key] ? 700 : 400, color: form[doc.key] ? BRAND : '#374151' }}>
+                <label key={doc.key} style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, cursor:'pointer', fontWeight: form[doc.key] ? 700 : 400, color: form[doc.key] ? BRAND : '#3A4058' }}>
                   <input type="checkbox" checked={!!form[doc.key]} onChange={e => set(doc.key, e.target.checked)}
                     style={{ width:16, height:16, accentColor:BRAND, cursor:'pointer' }} />
                   {form[doc.key] ? '☑' : '☐'} {doc.label}
@@ -909,13 +909,13 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
           <Sec title="Notas">
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
               placeholder="Notas internas sobre el contrato..."
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </Sec>
         </>
       )}
 
       {canEdit && (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8, flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8, flexWrap:'wrap', gap:10 }}>
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
@@ -936,7 +936,7 @@ function FichaContrato({ contract, user, users, contacts, admin, onBack, onSaved
 function Sec({ title, children }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #E4E2DA' }}>
         {title}
       </h3>
       {children}
@@ -949,5 +949,5 @@ function Grid2({ children }) {
 }
 
 function FL({ children }) {
-  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
+  return <label style={{ fontSize:11, fontWeight:700, color:'#3A4058', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }

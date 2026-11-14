@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
 
-const BRAND = '#002292';
+const BRAND = '#00208F';
 
 const INVESTOR_TIPOS = {
   particular:    { label:'Particular',    color:'#059669', bg:'#ecfdf5' },
@@ -12,7 +12,7 @@ const INVESTOR_TIPOS = {
 
 const INVESTOR_ESTADOS = {
   activo:    { label:'Activo',    color:'#059669', bg:'#d1fae5' },
-  inactivo:  { label:'Inactivo',  color:'#6b7280', bg:'#f3f4f6' },
+  inactivo:  { label:'Inactivo',  color:'#5B6178', bg:'#f3f4f6' },
   potencial: { label:'Potencial', color:'#d97706', bg:'#fef3c7' },
 };
 
@@ -20,7 +20,7 @@ const GEOGRAFIAS = ['Galicia','Asturias','Cantabria','Norte España','Nacional',
 const TIPOS_ACTIVO_INTERES = ['Vivienda','Local','Suelo','Cartera NPL','Subasta judicial'];
 
 const PORTFOLIO_ESTADOS = {
-  identificado:     { label:'Identificado',   color:'#6b7280', bg:'#f3f4f6' },
+  identificado:     { label:'Identificado',   color:'#5B6178', bg:'#f3f4f6' },
   'análisis':       { label:'Análisis',       color:'#2563eb', bg:'#dbeafe' },
   oferta_enviada:   { label:'Oferta enviada', color:'#7c3aed', bg:'#f5f3ff' },
   'negociación':    { label:'Negociación',    color:'#d97706', bg:'#fef3c7' },
@@ -88,7 +88,7 @@ function notaEfectiva(a) {
   return a.nota_oportunidad !== null && a.nota_oportunidad !== undefined ? Number(a.nota_oportunidad) : null;
 }
 function notaBadge(nota) {
-  if (nota === null || nota === undefined) return { label:'—', color:'#6b7280', bg:'#f3f4f6' };
+  if (nota === null || nota === undefined) return { label:'—', color:'#5B6178', bg:'#f3f4f6' };
   if (nota >= 7) return { label:'Alta oportunidad', color:'#059669', bg:'#dcfce7' };
   if (nota >= 4) return { label:'Interesante', color:'#d97706', bg:'#fef9c3' };
   return { label:'Riesgo', color:'#dc2626', bg:'#fee2e2' };
@@ -169,7 +169,7 @@ function parseInformeNPL(text) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -231,8 +231,8 @@ export default function NPL({ user, users }) {
   return (
     <div>
       <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>📊 NPL</h1>
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Inversores y carteras de deuda</p>
+        <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>📊 NPL</h1>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Inversores y carteras de deuda</p>
       </div>
 
       <div className="tabs-scroll" style={{ display:'flex', gap:8, marginBottom:24, flexWrap:'wrap' }}>
@@ -245,7 +245,7 @@ export default function NPL({ user, users }) {
       </div>
 
       {loading ? (
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Cargando...</p>
       ) : (
         <>
           {tab === 'inversores' && (
@@ -296,7 +296,7 @@ function InversoresTab({ investors, users, user, admin, onSaved, onDeleted }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18, flexWrap:'wrap', gap:10 }}>
         <div>
           <h2 style={{ fontSize:18, fontWeight:800, color:BRAND }}>Inversores</h2>
-          <p style={{ color:'#9ca3af', fontSize:12 }}>{filtered.length} inversores</p>
+          <p style={{ color:'#8A8FA3', fontSize:12 }}>{filtered.length} inversores</p>
         </div>
         <button className="btn-p" onClick={() => setModal('new')}>+ Nuevo inversor</button>
       </div>
@@ -325,7 +325,7 @@ function InversoresTab({ investors, users, user, admin, onSaved, onDeleted }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {investors.length === 0 ? 'No hay inversores. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -333,9 +333,9 @@ function InversoresTab({ investors, users, user, admin, onSaved, onDeleted }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Nombre','Tipo','Ticket','Geografía','Estado','Comercial',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -345,17 +345,17 @@ function InversoresTab({ investors, users, user, admin, onSaved, onDeleted }) {
                   const estado = INVESTOR_ESTADOS[i.estado] || {};
                   const com = users.find(u => u.id === i.comercial_id);
                   return (
-                    <tr key={i.id} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
+                    <tr key={i.id} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
                       <td style={{ padding:'9px 13px' }}>
                         <button onClick={() => setModal(i)} style={{ fontSize:13, fontWeight:700, color:BRAND, background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'left' }}>
                           {i.nombre}
                         </button>
-                        {i.email && <div style={{ fontSize:11, color:'#9ca3af' }}>{i.email}</div>}
+                        {i.email && <div style={{ fontSize:11, color:'#8A8FA3' }}>{i.email}</div>}
                       </td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:tipo.bg, color:tipo.color }}>{tipo.label}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>
                         {i.ticket_min || i.ticket_max ? `${fmt(i.ticket_min)} – ${fmt(i.ticket_max)}` : '—'}
                       </td>
                       <td style={{ padding:'9px 13px' }}>
@@ -368,7 +368,7 @@ function InversoresTab({ investors, users, user, admin, onSaved, onDeleted }) {
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {canEdit(i) && (
                           <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
@@ -501,11 +501,11 @@ function InvestorModal({ investor, user, users, canDelete, onClose, onSaved, onD
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
               placeholder="Notas internas sobre el inversor..."
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && canDelete && (
               <button onClick={handleDelete} disabled={deleting}
@@ -539,7 +539,7 @@ function CarterasList({ portfolios, admin, onSelect, onCreated }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18, flexWrap:'wrap', gap:10 }}>
         <div>
           <h2 style={{ fontSize:18, fontWeight:800, color:BRAND }}>Carteras NPL</h2>
-          <p style={{ color:'#9ca3af', fontSize:12 }}>{filtered.length} carteras</p>
+          <p style={{ color:'#8A8FA3', fontSize:12 }}>{filtered.length} carteras</p>
         </div>
         {admin && <button className="btn-p" onClick={() => setModal('new')}>+ Nueva cartera</button>}
       </div>
@@ -550,7 +550,7 @@ function CarterasList({ portfolios, admin, onSelect, onCreated }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {portfolios.length === 0 ? 'No hay carteras. Añade la primera.' : 'Sin resultados.'}
         </div>
       ) : (
@@ -558,9 +558,9 @@ function CarterasList({ portfolios, admin, onSelect, onCreated }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Nombre','Banco origen','Nº activos','Deuda total OB','VM total','LTV medio','Estado','Fecha límite'].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -569,17 +569,17 @@ function CarterasList({ portfolios, admin, onSelect, onCreated }) {
                   const m = portfolioMetrics(p);
                   const estado = PORTFOLIO_ESTADOS[p.estado] || {};
                   return (
-                    <tr key={p.id} className="tr" style={{ borderTop:'1px solid #f0f3fb', cursor:'pointer' }} onClick={() => onSelect(p.id)}>
+                    <tr key={p.id} className="tr" style={{ borderTop:'1px solid #F6F5F1', cursor:'pointer' }} onClick={() => onSelect(p.id)}>
                       <td style={{ padding:'9px 13px', fontSize:13, fontWeight:700, color:BRAND }}>{p.nombre}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{p.banco_origen || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{m.n}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(m.deudaTotal)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(m.vmTotal)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{m.ltvMedio !== null ? `${m.ltvMedio.toFixed(1)}%` : '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{p.banco_origen || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{m.n}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(m.deudaTotal)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(m.vmTotal)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{m.ltvMedio !== null ? `${m.ltvMedio.toFixed(1)}%` : '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:estado.bg, color:estado.color }}>{estado.label}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{p.fecha_limite || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{p.fecha_limite || '—'}</td>
                     </tr>
                   );
                 })}
@@ -663,10 +663,10 @@ function CarteraModal({ portfolio, onClose, onSaved, onDeleted, canDelete }) {
         <div style={{ marginTop:12, marginBottom:8 }}>
           <FL>Notas</FL>
           <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && canDelete && (
               <button onClick={handleDelete} disabled={deleting}
@@ -720,17 +720,17 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
     <div>
       <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onBack}
-          style={{ background:'none', border:'1.5px solid #dde2f0', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#374151' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1, minWidth:200 }}>
-          <h2 style={{ fontSize:22, fontWeight:800, color:BRAND, fontFamily:"'Barlow Condensed',sans-serif" }}>{portfolio.nombre}</h2>
-          <p style={{ fontSize:12, color:'#9ca3af' }}>
+          <h2 style={{ fontSize:22, fontWeight:800, color:BRAND, fontFamily:"'Poppins',sans-serif" }}>{portfolio.nombre}</h2>
+          <p style={{ fontSize:12, color:'#8A8FA3' }}>
             {portfolio.banco_origen || 'Sin banco de origen'}
             <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>
             {portfolio.fecha_limite && <span style={{ marginLeft:8 }}>· Fecha límite: {portfolio.fecha_limite}</span>}
           </p>
-          {portfolio.notas && <p style={{ fontSize:12, color:'#6b7280', marginTop:6, maxWidth:640 }}>{portfolio.notas}</p>}
+          {portfolio.notas && <p style={{ fontSize:12, color:'#5B6178', marginTop:6, maxWidth:640 }}>{portfolio.notas}</p>}
         </div>
         {admin && (
           <div style={{ display:'flex', gap:8 }}>
@@ -772,7 +772,7 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
           <option value="amarillo">🟡 Amarillo</option>
           <option value="rojo">🔴 Rojo</option>
         </select>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#374151', cursor:'pointer' }}>
+        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#3A4058', cursor:'pointer' }}>
           <input type="checkbox" checked={filters.destacado} onChange={e => setFilters(f => ({ ...f, destacado:e.target.checked }))}
             style={{ width:15, height:15, accentColor:BRAND, cursor:'pointer' }} />
           Solo destacados
@@ -786,7 +786,7 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
       </div>
 
       {filteredActivos.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {activos.length === 0 ? 'No hay activos en esta cartera. Importa el informe o añade uno manual.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -794,9 +794,9 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Nº','Tipología','Dirección','Superficie m²','OB','Valor mercado','LTV','Nota','Procesal','Registral','⭐',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -805,21 +805,21 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
                   const nota = notaEfectiva(a);
                   const nb = notaBadge(nota);
                   return (
-                    <tr key={a.id} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#9ca3af' }}>{a.num_activo || '—'}</td>
+                    <tr key={a.id} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#8A8FA3' }}>{a.num_activo || '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:'#f0f3fc', color:BRAND }}>{a.tipologia || '—'}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', maxWidth:220 }}>{a.direccion || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmtNum(a.superficie_m2,' m²')}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{a.ltv !== null && a.ltv !== undefined ? `${Number(a.ltv).toFixed(1)}%` : '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', maxWidth:220 }}>{a.direccion || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmtNum(a.superficie_m2,' m²')}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{a.ltv !== null && a.ltv !== undefined ? `${Number(a.ltv).toFixed(1)}%` : '—'}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:nb.bg, color:nb.color }}>{nb.label}</span>
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:11, color:'#374151', whiteSpace:'nowrap', textTransform:'capitalize' }}>{a.estado_procesal || '—'}</td>
-                      <td style={{ padding:'9px 13px', fontSize:11, color:'#374151', whiteSpace:'nowrap', textTransform:'capitalize' }}>{a.estado_registral || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap', textTransform:'capitalize' }}>{a.estado_procesal || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap', textTransform:'capitalize' }}>{a.estado_registral || '—'}</td>
                       <td style={{ padding:'9px 13px', textAlign:'center' }}>{a.destacado ? '⭐' : ''}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {admin && (
@@ -896,11 +896,11 @@ function ImportModal({ portfolioId, onClose, onImported }) {
     <div className="mb" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="mo mo-lg">
         <h2 style={{ fontSize:17, fontWeight:800, color:BRAND, marginBottom:6 }}>Importar activos</h2>
-        <p style={{ fontSize:12, color:'#9ca3af', marginBottom:14 }}>Pega el texto del informe enriquecido (Excel del acreedor + Catastro).</p>
+        <p style={{ fontSize:12, color:'#8A8FA3', marginBottom:14 }}>Pega el texto del informe enriquecido (Excel del acreedor + Catastro).</p>
 
         <textarea value={text} onChange={e => setText(e.target.value)} rows={10}
           placeholder={'ACTIVO Nº 196 | Referencia interna: c915580639650019195\nProvincia/Ayto: A Coruña / Sada\nDirección (Catastro): LG TORNOS 30 15168 SADA (A CORUÑA)\n...'}
-          style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:12, minHeight:200, resize:'vertical', fontFamily:'monospace', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+          style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:12, minHeight:200, resize:'vertical', fontFamily:'monospace', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
 
         {parsed.length > 0 && (
           <div style={{ marginTop:16 }}>
@@ -910,9 +910,9 @@ function ImportModal({ portfolioId, onClose, onImported }) {
             <div className="card" style={{ overflow:'hidden', maxHeight:280, overflowY:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
-                  <tr style={{ background:'#f8f9fd' }}>
+                  <tr style={{ background:'#F6F5F1' }}>
                     {['Nº','Tipología','Dirección','OB','VM','LTV','Nota'].map(h => (
-                      <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase' }}>{h}</th>
+                      <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -920,13 +920,13 @@ function ImportModal({ portfolioId, onClose, onImported }) {
                   {parsed.map((a,idx) => {
                     const nb = notaBadge(a.nota_oportunidad);
                     return (
-                      <tr key={idx} style={{ borderTop:'1px solid #f0f3fb' }}>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#9ca3af' }}>{a.num_activo || '—'}</td>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#374151' }}>{a.tipologia}</td>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#374151', maxWidth:200 }}>{a.direccion || '—'}</td>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
-                        <td style={{ padding:'7px 10px', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>{a.ltv !== null ? `${a.ltv.toFixed(1)}%` : '—'}</td>
+                      <tr key={idx} style={{ borderTop:'1px solid #F6F5F1' }}>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#8A8FA3' }}>{a.num_activo || '—'}</td>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#3A4058' }}>{a.tipologia}</td>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#3A4058', maxWidth:200 }}>{a.direccion || '—'}</td>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
+                        <td style={{ padding:'7px 10px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{a.ltv !== null ? `${a.ltv.toFixed(1)}%` : '—'}</td>
                         <td style={{ padding:'7px 10px', whiteSpace:'nowrap' }}>
                           <span className="tag" style={{ background:nb.bg, color:nb.color, fontSize:10 }}>{nb.label}</span>
                         </td>
@@ -939,7 +939,7 @@ function ImportModal({ portfolioId, onClose, onImported }) {
           </div>
         )}
 
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:16 }}>
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:16 }}>
           <button className="btn-g" onClick={onClose}>Cancelar</button>
           <button className="btn-p" onClick={handleImport} disabled={parsed.length === 0 || importing}>
             {importing ? 'Importando...' : `Importar ${parsed.length} activo${parsed.length !== 1 ? 's' : ''}`}
@@ -1055,7 +1055,7 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
               <span style={{ fontSize:12, fontWeight:700, color:nbLive.color, textTransform:'uppercase', letterSpacing:'.5px' }}>LTV: {ltvLive !== null ? `${ltvLive.toFixed(1)}%` : '—'}</span>
               <div style={{ fontSize:11, color:nbLive.color, marginTop:2 }}>Nota automática: {notaAutoLive ?? '—'} · {nbLive.label}</div>
             </div>
-            <span style={{ fontSize:26, fontWeight:800, color:nbLive.color, fontFamily:"'Barlow Condensed',sans-serif" }}>{notaEfectivaLive ?? '—'}</span>
+            <span style={{ fontSize:26, fontWeight:800, color:nbLive.color, fontFamily:"'Poppins',sans-serif" }}>{notaEfectivaLive ?? '—'}</span>
           </div>
         </Sec>
 
@@ -1081,7 +1081,7 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
             <div><FL>Nota manual (1–10, opcional)</FL><input className="fi" type="number" min="1" max="10" value={form.nota_manual} onChange={e => set('nota_manual', e.target.value)} placeholder="Sobrescribe la nota automática" /></div>
             <div>
               <FL>Destacado</FL>
-              <label style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', cursor:'pointer', fontSize:13, fontWeight:600, color: form.destacado ? BRAND : '#374151' }}>
+              <label style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', cursor:'pointer', fontSize:13, fontWeight:600, color: form.destacado ? BRAND : '#3A4058' }}>
                 <input type="checkbox" checked={form.destacado} onChange={e => set('destacado', e.target.checked)}
                   style={{ width:16, height:16, accentColor:BRAND, cursor:'pointer' }} />
                 ⭐ Marcar como destacado
@@ -1093,11 +1093,11 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
           <div style={{ marginTop:12 }}>
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={3}
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:70, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:70, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && (
               <button onClick={handleDelete} disabled={deleting}
@@ -1140,7 +1140,7 @@ function AnalisisGlobal({ portfolios }) {
   const destacados = allActivos.filter(a => a.destacado);
 
   if (allActivos.length === 0) {
-    return <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>No hay activos cargados todavía. Importa una cartera para ver el análisis global.</div>;
+    return <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>No hay activos cargados todavía. Importa una cartera para ver el análisis global.</div>;
   }
 
   return (
@@ -1150,20 +1150,20 @@ function AnalisisGlobal({ portfolios }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Provincia','Nº activos','Deuda total','VM total','LTV medio'].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {provRows.map(r => (
-                  <tr key={r.provincia} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
+                  <tr key={r.provincia} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
                     <td style={{ padding:'9px 13px', fontSize:12, fontWeight:700, color:BRAND }}>{r.provincia}</td>
-                    <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{r.n}</td>
-                    <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(r.deuda)}</td>
-                    <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(r.vm)}</td>
-                    <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{r.ltvMedio !== null ? `${r.ltvMedio.toFixed(1)}%` : '—'}</td>
+                    <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{r.n}</td>
+                    <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(r.deuda)}</td>
+                    <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(r.vm)}</td>
+                    <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{r.ltvMedio !== null ? `${r.ltvMedio.toFixed(1)}%` : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1182,14 +1182,14 @@ function AnalisisGlobal({ portfolios }) {
 
       <Sec title={`Activos destacados ⭐ (${destacados.length})`}>
         {destacados.length === 0 ? (
-          <p style={{ color:'#9ca3af', fontSize:13 }}>No hay activos destacados.</p>
+          <p style={{ color:'#8A8FA3', fontSize:13 }}>No hay activos destacados.</p>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {destacados.map(a => (
               <div key={a.id} className="ii" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
                 <div>
-                  <span style={{ fontSize:13, fontWeight:700, color:'#1e2a4a' }}>⭐ {a.direccion || `Activo Nº ${a.num_activo}`}</span>
-                  <div style={{ fontSize:11, color:'#9ca3af' }}>{a.tipologia} · {fmt(a.ob)} OB · {fmt(a.valor_mercado)} VM</div>
+                  <span style={{ fontSize:13, fontWeight:700, color:'#0B1233' }}>⭐ {a.direccion || `Activo Nº ${a.num_activo}`}</span>
+                  <div style={{ fontSize:11, color:'#8A8FA3' }}>{a.tipologia} · {fmt(a.ob)} OB · {fmt(a.valor_mercado)} VM</div>
                 </div>
                 <span className="tag" style={{ background:'#eff6ff', color:'#1d4ed8' }}>{a._cartera}</span>
               </div>
@@ -1202,26 +1202,26 @@ function AnalisisGlobal({ portfolios }) {
 }
 
 function ActivosMiniTable({ activos, extraCols=[] }) {
-  if (activos.length === 0) return <p style={{ color:'#9ca3af', fontSize:13 }}>Sin resultados.</p>;
+  if (activos.length === 0) return <p style={{ color:'#8A8FA3', fontSize:13 }}>Sin resultados.</p>;
   return (
     <div className="card" style={{ overflow:'hidden' }}>
       <div style={{ overflowX:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr style={{ background:'#f8f9fd' }}>
+            <tr style={{ background:'#F6F5F1' }}>
               {['Cartera','Tipología','Dirección','OB','VM', ...extraCols.map(c => c.h)].map(h => (
-                <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {activos.map((a,idx) => (
-              <tr key={a.id||idx} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
+              <tr key={a.id||idx} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
                 <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}><span className="tag" style={{ background:'#eff6ff', color:'#1d4ed8' }}>{a._cartera}</span></td>
-                <td style={{ padding:'9px 13px', fontSize:12, color:'#374151' }}>{a.tipologia || '—'}</td>
-                <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', maxWidth:220 }}>{a.direccion || '—'}</td>
-                <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
-                <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
+                <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058' }}>{a.tipologia || '—'}</td>
+                <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', maxWidth:220 }}>{a.direccion || '—'}</td>
+                <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.ob)}</td>
+                <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.valor_mercado)}</td>
                 {extraCols.map((c,i) => <td key={i} style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>{c.render(a)}</td>)}
               </tr>
             ))}
@@ -1237,7 +1237,7 @@ function ActivosMiniTable({ activos, extraCols=[] }) {
 function Sec({ title, children }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #E4E2DA' }}>
         {title}
       </h3>
       {children}
@@ -1250,14 +1250,14 @@ function Grid2({ children }) {
 }
 
 function FL({ children }) {
-  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
+  return <label style={{ fontSize:11, fontWeight:700, color:'#3A4058', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }
 
 function CheckboxGroup({ options, selected, onToggle }) {
   return (
     <div style={{ display:'flex', flexWrap:'wrap', gap:'10px 24px' }}>
       {options.map(opt => (
-        <label key={opt} style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, cursor:'pointer', fontWeight: selected.includes(opt) ? 700 : 400, color: selected.includes(opt) ? BRAND : '#374151' }}>
+        <label key={opt} style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, cursor:'pointer', fontWeight: selected.includes(opt) ? 700 : 400, color: selected.includes(opt) ? BRAND : '#3A4058' }}>
           <input type="checkbox" checked={selected.includes(opt)} onChange={() => onToggle(opt)}
             style={{ width:15, height:15, accentColor:BRAND, cursor:'pointer' }} />
           {opt}
@@ -1271,8 +1271,8 @@ function StatCard({ label, value, icon, color, small }) {
   return (
     <div className="sc" style={{ borderLeftColor:color }}>
       <div style={{ fontSize:24, marginBottom:6 }}>{icon}</div>
-      <div style={{ fontSize: small ? 13 : 24, fontWeight:800, color, fontFamily: small ? 'inherit' : "'Barlow Condensed',sans-serif", lineHeight:1.3 }}>{value}</div>
-      <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{label}</div>
+      <div style={{ fontSize: small ? 13 : 24, fontWeight:800, color, fontFamily: small ? 'inherit' : "'Poppins',sans-serif", lineHeight:1.3 }}>{value}</div>
+      <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{label}</div>
     </div>
   );
 }

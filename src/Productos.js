@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./utils/supabase";
 import logo from "./Que Necesitas - Logo para web y Favicon.png";
 
-const BRAND  = "#002292";
+const BRAND  = "#00208F";
 const tday   = () => new Date().toISOString().split("T")[0];
 const genId  = () => crypto.randomUUID();
 const IVA    = 0.21;
@@ -15,7 +15,7 @@ const CATS = {
   telefonia:{ label:"📱 Telefonía móvil",     cat:"Telefonía",   color:"#7c3aed", light:"#f5f3ff" },
 };
 // Busca la entrada de CATS por el valor real de la columna categoria en BD
-const catLookup = (dbVal) => Object.values(CATS).find(v => v.cat === dbVal) || { label:dbVal, color:BRAND, light:"#f0f3fb" };
+const catLookup = (dbVal) => Object.values(CATS).find(v => v.cat === dbVal) || { label:dbVal, color:BRAND, light:"#F6F5F1" };
 
 // Mapeo linea de negocio → claves de CATS (para filtrar por permisos)
 const LINEA_TO_CAT_KEYS = {
@@ -83,24 +83,24 @@ function printQuote({ quoteId, fecha, tipoInst, notas, rawItems, products, conta
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a2e;padding:28px 36px;}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:14px;border-bottom:3px solid #002292;}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:14px;border-bottom:3px solid #00208F;}
 .logo{width:52px;height:52px;border-radius:10px;object-fit:cover;}
-.brand{font-size:20px;font-weight:800;color:#002292;letter-spacing:1px;}
-.brand-sub{font-size:10px;color:#6b7280;margin-top:2px;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;background:#f8f9fd;padding:13px 16px;border-radius:8px;}
-.ik p:first-child{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:2px;}
+.brand{font-size:20px;font-weight:800;color:#00208F;letter-spacing:1px;}
+.brand-sub{font-size:10px;color:#5B6178;margin-top:2px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;background:#F6F5F1;padding:13px 16px;border-radius:8px;}
+.ik p:first-child{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#8A8FA3;margin-bottom:2px;}
 .ik p:last-child{font-size:12px;font-weight:600;color:#1a1a2e;}
-.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;}
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5B6178;margin-bottom:8px;}
 table{width:100%;border-collapse:collapse;margin-bottom:18px;}
-th{background:#002292;color:white;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:left;}
-td{padding:7px 10px;border-bottom:1px solid #f0f3fb;font-size:11px;}
-tr:nth-child(even) td{background:#f8f9fd;}
-.totals{background:#002292;color:white;border-radius:10px;padding:14px 18px;margin-bottom:14px;}
+th{background:#00208F;color:white;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:left;}
+td{padding:7px 10px;border-bottom:1px solid #F6F5F1;font-size:11px;}
+tr:nth-child(even) td{background:#F6F5F1;}
+.totals{background:#00208F;color:white;border-radius:10px;padding:14px 18px;margin-bottom:14px;}
 .tr{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:5px;}
 .tr.main{font-size:15px;font-weight:800;border-top:1px solid rgba(255,255,255,.3);padding-top:8px;margin-top:4px;}
 .cond{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:11px;line-height:1.5;}
-.notes-box{background:#f8f9fd;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:11px;}
-.footer{border-top:2px solid #e8ecf8;padding-top:10px;font-size:10px;color:#9ca3af;display:flex;justify-content:space-between;margin-top:8px;}
+.notes-box{background:#F6F5F1;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:11px;}
+.footer{border-top:2px solid #E4E2DA;padding-top:10px;font-size:10px;color:#8A8FA3;display:flex;justify-content:space-between;margin-top:8px;}
 @media print{@page{margin:1.5cm;}body{padding:0;}}
 </style></head><body>
 <div class="hdr">
@@ -108,10 +108,10 @@ tr:nth-child(even) td{background:#f8f9fd;}
     <img src="${logo}" class="logo" alt="queNECESITAS" onerror="this.style.display='none'"/>
     <div><div class="brand">queNECESITAS</div><div class="brand-sub">Plataforma de servicios multisector · Galicia</div></div>
   </div>
-  <div style="text-align:right;font-size:11px;color:#6b7280">
-    <div style="font-size:14px;font-weight:800;color:#002292">PRESUPUESTO</div>
+  <div style="text-align:right;font-size:11px;color:#5B6178">
+    <div style="font-size:14px;font-weight:800;color:#00208F">PRESUPUESTO</div>
     <div style="margin-top:2px">Nº ${(quoteId || "").slice(-8).toUpperCase()}</div>
-    <div style="margin-top:2px;font-weight:600;color:#374151">Fecha: ${fecha}</div>
+    <div style="margin-top:2px;font-weight:600;color:#3A4058">Fecha: ${fecha}</div>
   </div>
 </div>
 
@@ -178,11 +178,11 @@ function CatalogoView({ products, catFilter, setCatFilter, canEdit, onEdit, onAd
     <div>
       {/* Category filters */}
       <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap",alignItems:"center"}}>
-        <button onClick={()=>setCatFilter("all")} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter==="all"?BRAND:"#f0f3fb",color:catFilter==="all"?"white":"#6b7280"}}>
+        <button onClick={()=>setCatFilter("all")} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter==="all"?BRAND:"#F6F5F1",color:catFilter==="all"?"white":"#5B6178"}}>
           Todos
         </button>
         {Object.entries(CATS).filter(([k])=>allowedCatKeys.includes(k)).map(([k,v])=>(
-          <button key={k} onClick={()=>setCatFilter(k)} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter===k?v.color:"#f0f3fb",color:catFilter===k?"white":"#6b7280"}}>
+          <button key={k} onClick={()=>setCatFilter(k)} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter===k?v.color:"#F6F5F1",color:catFilter===k?"white":"#5B6178"}}>
             {v.label}
           </button>
         ))}
@@ -194,7 +194,7 @@ function CatalogoView({ products, catFilter, setCatFilter, canEdit, onEdit, onAd
       </div>
 
       {Object.keys(grouped).length === 0 && (
-        <div className="card" style={{padding:48,textAlign:"center",color:"#9ca3af"}}>
+        <div className="card" style={{padding:48,textAlign:"center",color:"#8A8FA3"}}>
           <p style={{fontSize:32,marginBottom:8}}>📦</p>
           {catFilter === "all" ? (
             <>
@@ -205,7 +205,7 @@ function CatalogoView({ products, catFilter, setCatFilter, canEdit, onEdit, onAd
             <>
               <p style={{fontSize:14,marginBottom:4}}>Sin productos en esta categoría</p>
               <p style={{fontSize:11,marginTop:6}}>
-                Filtrando por: <code style={{background:"#f0f3fb",padding:"1px 6px",borderRadius:4}}>{catFilter}</code>
+                Filtrando por: <code style={{background:"#F6F5F1",padding:"1px 6px",borderRadius:4}}>{catFilter}</code>
               </p>
               <p style={{fontSize:11,color:"#f59e0b",marginTop:6}}>
                 ⚠️ Revisa la consola — el campo <code>categoria</code> en Supabase
@@ -222,13 +222,13 @@ function CatalogoView({ products, catFilter, setCatFilter, canEdit, onEdit, onAd
           <div key={cat} style={{marginBottom:28}}>
             <h2 style={{fontSize:16,fontWeight:800,color:cv.color,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
               {cv.label}
-              <span style={{fontSize:11,color:"#9ca3af",fontWeight:400}}>({Object.values(subs).flat().length} productos)</span>
+              <span style={{fontSize:11,color:"#8A8FA3",fontWeight:400}}>({Object.values(subs).flat().length} productos)</span>
             </h2>
             {Object.entries(subs).map(([sub, prods]) => {
               const subLabel = SUBS_ADT.find(s=>s.key===sub)?.label || (sub === "_root" ? "" : sub);
               return (
                 <div key={sub} style={{marginBottom:16}}>
-                  {subLabel && <h3 style={{fontSize:12,fontWeight:800,color:"#374151",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>{subLabel}</h3>}
+                  {subLabel && <h3 style={{fontSize:12,fontWeight:800,color:"#3A4058",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>{subLabel}</h3>}
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
                     {prods.map(p => (
                       <ProductCard key={p.id} product={p} catColor={cv.color} catLight={cv.light} canEdit={canEdit} onEdit={()=>onEdit(p)} onToggle={()=>onToggle(p.id)} />
@@ -260,34 +260,34 @@ function ProductCard({ product: p, catColor, catLight, canEdit, onEdit, onToggle
       {p.tipo_producto === "paquete_base" && (
         <span style={{position:"absolute",top:8,right:isInactivo?68:8,fontSize:9,fontWeight:700,background:catLight,color:catColor,padding:"2px 6px",borderRadius:20}}>BASE</span>
       )}
-      <p style={{fontSize:13,fontWeight:700,color:"#1e2a4a",marginBottom:6,paddingRight:p.tipo_producto==="paquete_base"?52:0}}>{p.nombre}</p>
-      {p.descripcion && <p style={{fontSize:10,color:"#9ca3af",marginBottom:8,lineHeight:1.4}}>{p.descripcion}</p>}
+      <p style={{fontSize:13,fontWeight:700,color:"#0B1233",marginBottom:6,paddingRight:p.tipo_producto==="paquete_base"?52:0}}>{p.nombre}</p>
+      {p.descripcion && <p style={{fontSize:10,color:"#8A8FA3",marginBottom:8,lineHeight:1.4}}>{p.descripcion}</p>}
 
       {/* Cuota mensual — siempre visible, muestra "—" si 0 */}
       <div style={{marginBottom:4}}>
         {cuota > 0 ? (
           <>
             <span style={{fontSize:16,fontWeight:800,color:catColor}}>{fmtE(cuotaIva || cuota)}</span>
-            <span style={{fontSize:10,color:"#9ca3af"}}>/mes · sin IVA {fmtE(cuota)}</span>
+            <span style={{fontSize:10,color:"#8A8FA3"}}>/mes · sin IVA {fmtE(cuota)}</span>
           </>
         ) : (
-          <span style={{fontSize:12,color:"#9ca3af"}}>Cuota: —</span>
+          <span style={{fontSize:12,color:"#8A8FA3"}}>Cuota: —</span>
         )}
       </div>
 
       {pvp > 0 && (
-        <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>
+        <div style={{fontSize:11,color:"#5B6178",marginBottom:4}}>
           Ó PVP <strong>{fmtE(pvpIva || pvp)}</strong>
-          <span style={{fontSize:10,color:"#9ca3af"}}> · sin IVA {fmtE(pvp)}</span>
+          <span style={{fontSize:10,color:"#8A8FA3"}}> · sin IVA {fmtE(pvp)}</span>
         </div>
       )}
-      {inst > 0 && <div style={{fontSize:10,color:"#6b7280"}}>🔧 Instalación: {fmtE(inst)}</div>}
+      {inst > 0 && <div style={{fontSize:10,color:"#5B6178"}}>🔧 Instalación: {fmtE(inst)}</div>}
       {cuota === 0 && pvp === 0 && inst === 0 && (
         <div style={{fontSize:10,color:"#f59e0b",marginTop:4}}>⚠️ Sin precios — edita el producto</div>
       )}
 
       {canEdit && (
-        <div style={{display:"flex",gap:6,marginTop:10,borderTop:"1px solid #f0f3fb",paddingTop:8}}>
+        <div style={{display:"flex",gap:6,marginTop:10,borderTop:"1px solid #F6F5F1",paddingTop:8}}>
           <button className="btn-g" style={{fontSize:11,padding:"3px 8px",flex:1}} onClick={onEdit}>✏️ Editar</button>
           <button className="btn-g" style={{fontSize:11,padding:"3px 8px",color:p.activo?"#d97706":"#059669",borderColor:p.activo?"#fde68a":"#a7f3d0"}} onClick={onToggle}>
             {p.activo ? "⏸ Desactivar" : "▶ Activar"}
@@ -305,12 +305,12 @@ function PresupuestosView({ quotes, contacts, products, user, onNew, onDelete })
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <p style={{fontSize:13,color:"#6b7280"}}>{quotes.length} presupuesto{quotes.length !== 1 ? "s" : ""} guardado{quotes.length !== 1 ? "s" : ""}</p>
+        <p style={{fontSize:13,color:"#5B6178"}}>{quotes.length} presupuesto{quotes.length !== 1 ? "s" : ""} guardado{quotes.length !== 1 ? "s" : ""}</p>
         <button className="btn-p" onClick={onNew}>+ Nuevo presupuesto</button>
       </div>
 
       {quotes.length === 0 && (
-        <div className="card" style={{padding:48,textAlign:"center",color:"#9ca3af"}}>
+        <div className="card" style={{padding:48,textAlign:"center",color:"#8A8FA3"}}>
           <p style={{fontSize:32,marginBottom:8}}>📄</p>
           <p>Aún no hay presupuestos guardados.</p>
           <button className="btn-p" style={{marginTop:16}} onClick={onNew}>Crear primer presupuesto</button>
@@ -331,8 +331,8 @@ function PresupuestosView({ quotes, contacts, products, user, onNew, onDelete })
               <div style={{flex:1,minWidth:160}}>
                 <p style={{fontSize:13,fontWeight:700,color:BRAND}}>{contact.name}</p>
                 <div style={{display:"flex",gap:10,marginTop:3,flexWrap:"wrap"}}>
-                  <span style={{fontSize:10,color:"#9ca3af"}}>📅 {q.fecha}</span>
-                  <span style={{fontSize:10,color:"#9ca3af"}}>Nº {q.id.slice(-8).toUpperCase()}</span>
+                  <span style={{fontSize:10,color:"#8A8FA3"}}>📅 {q.fecha}</span>
+                  <span style={{fontSize:10,color:"#8A8FA3"}}>Nº {q.id.slice(-8).toUpperCase()}</span>
                   <span style={{fontSize:10,fontWeight:700,color:q.tipo_instalacion==="negocio"?"#d97706":"#059669",background:q.tipo_instalacion==="negocio"?"#fffbeb":"#f0fdf4",padding:"1px 7px",borderRadius:20}}>
                     {q.tipo_instalacion==="negocio"?"🏢 Negocio":"🏠 Residencial"}
                   </span>
@@ -340,8 +340,8 @@ function PresupuestosView({ quotes, contacts, products, user, onNew, onDelete })
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <p style={{fontSize:16,fontWeight:800,color:BRAND}}>{fmtE(cuotaIva, "/mes")}</p>
-                {costeUnico > 0 && <p style={{fontSize:11,color:"#6b7280"}}>+ {fmtE(costeUnico)} instalación</p>}
-                <p style={{fontSize:10,color:"#9ca3af"}}>{items.length} producto{items.length!==1?"s":""}</p>
+                {costeUnico > 0 && <p style={{fontSize:11,color:"#5B6178"}}>+ {fmtE(costeUnico)} instalación</p>}
+                <p style={{fontSize:10,color:"#8A8FA3"}}>{items.length} producto{items.length!==1?"s":""}</p>
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 <button className="btn-p" style={{fontSize:12,padding:"6px 10px"}} onClick={()=>
@@ -443,7 +443,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       <div style={{display:"flex",gap:10,marginBottom:16}}>
         {[["existing","👤 Contacto existente"],["new","➕ Nuevo cliente"]].map(([v,l])=>(
           <button key={v} onClick={()=>setUseEx(v==="existing")}
-            style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#dde2f0"}`,background:(useExisting&&v==="existing")||(!useExisting&&v==="new")?"#eff6ff":"white",cursor:"pointer",fontWeight:700,fontSize:12,color:(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#6b7280"}}>
+            style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#C9CBD3"}`,background:(useExisting&&v==="existing")||(!useExisting&&v==="new")?"#eff6ff":"white",cursor:"pointer",fontWeight:700,fontSize:12,color:(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#5B6178"}}>
             {l}
           </button>
         ))}
@@ -453,17 +453,17 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         <div>
           <label className="fl">Buscar contacto</label>
           <input className="fi" placeholder="🔍 Nombre o teléfono…" value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:8}} />
-          <div style={{maxHeight:200,overflowY:"auto",border:"1.5px solid #dde2f0",borderRadius:8}}>
+          <div style={{maxHeight:200,overflowY:"auto",border:"1.5px solid #C9CBD3",borderRadius:8}}>
             {filteredContacts.slice(0,20).map(c=>(
-              <div key={c.id} onClick={()=>setConId(c.id)} style={{padding:"9px 12px",cursor:"pointer",background:contactId===c.id?"#eff6ff":"white",borderBottom:"1px solid #f0f3fb",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div key={c.id} onClick={()=>setConId(c.id)} style={{padding:"9px 12px",cursor:"pointer",background:contactId===c.id?"#eff6ff":"white",borderBottom:"1px solid #F6F5F1",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <p style={{fontSize:12,fontWeight:700,color:BRAND}}>{c.name}</p>
-                  <p style={{fontSize:10,color:"#9ca3af"}}>{c.empresa || ""} {c.phone || ""}</p>
+                  <p style={{fontSize:10,color:"#8A8FA3"}}>{c.empresa || ""} {c.phone || ""}</p>
                 </div>
                 {contactId===c.id && <span style={{color:BRAND,fontSize:16}}>✓</span>}
               </div>
             ))}
-            {filteredContacts.length === 0 && <p style={{padding:16,color:"#9ca3af",fontSize:12,textAlign:"center"}}>Sin resultados</p>}
+            {filteredContacts.length === 0 && <p style={{padding:16,color:"#8A8FA3",fontSize:12,textAlign:"center"}}>Sin resultados</p>}
           </div>
         </div>
       ) : (
@@ -481,9 +481,9 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         <label className="fl">Tipo de instalación</label>
         <div style={{display:"flex",gap:10,marginTop:6}}>
           {[["residencial","🏠 Residencial","24 meses permanencia"],["negocio","🏢 Negocio / Profesional","36 meses permanencia"]].map(([v,l,sub])=>(
-            <div key={v} onClick={()=>setTipoInst(v)} style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${tipoInst===v?BRAND:"#dde2f0"}`,background:tipoInst===v?"#eff6ff":"white",cursor:"pointer"}}>
-              <p style={{fontSize:12,fontWeight:700,color:tipoInst===v?BRAND:"#374151"}}>{l}</p>
-              <p style={{fontSize:10,color:"#9ca3af",marginTop:2}}>{sub}</p>
+            <div key={v} onClick={()=>setTipoInst(v)} style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${tipoInst===v?BRAND:"#C9CBD3"}`,background:tipoInst===v?"#eff6ff":"white",cursor:"pointer"}}>
+              <p style={{fontSize:12,fontWeight:700,color:tipoInst===v?BRAND:"#3A4058"}}>{l}</p>
+              <p style={{fontSize:10,color:"#8A8FA3",marginTop:2}}>{sub}</p>
             </div>
           ))}
         </div>
@@ -509,33 +509,33 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       const hasPvp = (p.precio_sin_iva || 0) > 0;
       return (
         <div key={p.id}
-          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:3,borderRadius:8,cursor:"pointer",background:sel?cv.light:"white",border:`1.5px solid ${sel?cv.color:"#e8ecf8"}`}}
+          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:3,borderRadius:8,cursor:"pointer",background:sel?cv.light:"white",border:`1.5px solid ${sel?cv.color:"#E4E2DA"}`}}
           onClick={()=>toggleItem(p.id, isBase)}>
           {/* Checkbox / radio */}
           <input type={isBase?"radio":"checkbox"} readOnly checked={sel}
             style={{width:15,height:15,cursor:"pointer",accentColor:cv.color,flexShrink:0}} />
           {/* Nombre + descripción */}
           <div style={{flex:1,minWidth:0}}>
-            <p style={{fontSize:12,fontWeight:sel?700:500,color:sel?cv.color:"#1e2a4a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            <p style={{fontSize:12,fontWeight:sel?700:500,color:sel?cv.color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {p.nombre}
               {isBase && <span style={{marginLeft:6,fontSize:9,fontWeight:700,background:cv.light,color:cv.color,padding:"1px 5px",borderRadius:10,border:`1px solid ${cv.color}`}}>BASE</span>}
             </p>
-            {p.descripcion && <p style={{fontSize:10,color:"#9ca3af",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.descripcion}</p>}
+            {p.descripcion && <p style={{fontSize:10,color:"#8A8FA3",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.descripcion}</p>}
           </div>
           {/* Precios */}
           <div style={{textAlign:"right",flexShrink:0,minWidth:110}} onClick={e=>e.stopPropagation()}>
             {p.cuota_sin_iva > 0 ? (
               <>
                 <span style={{fontSize:12,fontWeight:700,color:cv.color}}>{fmtE(p.cuota_sin_iva)}/mes</span>
-                <span style={{fontSize:10,color:"#9ca3af",display:"block"}}>({fmtE(p.cuota_con_iva)} IVA)</span>
+                <span style={{fontSize:10,color:"#8A8FA3",display:"block"}}>({fmtE(p.cuota_con_iva)} IVA)</span>
               </>
             ) : hasPvp ? (
               <>
-                <span style={{fontSize:12,fontWeight:700,color:"#6b7280"}}>PVP {fmtE(p.precio_con_iva||p.precio_sin_iva)}</span>
-                <span style={{fontSize:10,color:"#9ca3af",display:"block"}}>sin IVA {fmtE(p.precio_sin_iva)}</span>
+                <span style={{fontSize:12,fontWeight:700,color:"#5B6178"}}>PVP {fmtE(p.precio_con_iva||p.precio_sin_iva)}</span>
+                <span style={{fontSize:10,color:"#8A8FA3",display:"block"}}>sin IVA {fmtE(p.precio_sin_iva)}</span>
               </>
             ) : p.precio_instalacion > 0 ? (
-              <span style={{fontSize:11,color:"#6b7280"}}>Inst. {fmtE(p.precio_instalacion)}</span>
+              <span style={{fontSize:11,color:"#5B6178"}}>Inst. {fmtE(p.precio_instalacion)}</span>
             ) : (
               <span style={{fontSize:10,color:"#d1d5db"}}>Sin precio</span>
             )}
@@ -582,7 +582,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
                   {/* Cabecera categoría */}
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${cv.color}`}}>
                     <span style={{fontSize:13,fontWeight:800,color:cv.color,textTransform:"uppercase",letterSpacing:".5px"}}>{cv.label}</span>
-                    <span style={{fontSize:10,color:"#9ca3af"}}>({catProds.length})</span>
+                    <span style={{fontSize:10,color:"#8A8FA3"}}>({catProds.length})</span>
                   </div>
                   {/* Productos sin subcategoría */}
                   {catProds.filter(p => !p.subcategoria).map(p => prodRow(p, cv))}
@@ -592,7 +592,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
                     const subProds = catProds.filter(p => p.subcategoria === sk);
                     return (
                       <div key={sk} style={{marginBottom:12}}>
-                        <p style={{fontSize:10,fontWeight:800,color:"#6b7280",textTransform:"uppercase",letterSpacing:".6px",marginBottom:6,paddingLeft:2}}>{subLabel}</p>
+                        <p style={{fontSize:10,fontWeight:800,color:"#5B6178",textTransform:"uppercase",letterSpacing:".6px",marginBottom:6,paddingLeft:2}}>{subLabel}</p>
                         {subProds.map(p => prodRow(p, cv))}
                       </div>
                     );
@@ -601,7 +601,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
               );
             })}
             {products.length === 0 && (
-              <p style={{color:"#9ca3af",fontSize:12,padding:24,textAlign:"center"}}>No hay productos activos en el catálogo.</p>
+              <p style={{color:"#8A8FA3",fontSize:12,padding:24,textAlign:"center"}}>No hay productos activos en el catálogo.</p>
             )}
           </div>
 
@@ -625,7 +625,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
                 <p style={{marginTop:3}}>Tipo: <strong>{tipoInst==="negocio"?"Negocio":"Residencial"}</strong></p>
               </div>
             </div>
-            <div style={{marginTop:10,padding:10,background:"#f8f9fd",borderRadius:10,fontSize:10,color:"#6b7280"}}>
+            <div style={{marginTop:10,padding:10,background:"#F6F5F1",borderRadius:10,fontSize:10,color:"#5B6178"}}>
               <p style={{fontWeight:700,marginBottom:4}}>{items.length} producto{items.length!==1?"s":""} seleccionado{items.length!==1?"s":""}</p>
               {items.slice(0,5).map(it=>{
                 const p=products.find(x=>x.id===it.productId);
@@ -645,21 +645,21 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       <h3 style={{fontSize:14,fontWeight:800,color:BRAND,marginBottom:14}}>Paso 3 — Resumen y generación</h3>
 
       {/* Client info */}
-      <div style={{background:"#f8f9fd",borderRadius:10,padding:12,marginBottom:14,display:"flex",gap:16,flexWrap:"wrap"}}>
-        <div><p style={{fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",marginBottom:2}}>Cliente</p><p style={{fontSize:12,fontWeight:700,color:BRAND}}>{contactObj?.name || "—"}</p></div>
-        {contactObj?.empresa && <div><p style={{fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",marginBottom:2}}>Empresa</p><p style={{fontSize:12,color:"#374151"}}>{contactObj.empresa}</p></div>}
-        <div><p style={{fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",marginBottom:2}}>Tipo</p><p style={{fontSize:12,color:"#374151"}}>{tipoInst==="negocio"?"🏢 Negocio":"🏠 Residencial"}</p></div>
-        <div><p style={{fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",marginBottom:2}}>Fecha</p><p style={{fontSize:12,color:"#374151"}}>{fecha}</p></div>
-        <div><p style={{fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",marginBottom:2}}>Permanencia</p><p style={{fontSize:12,color:"#374151"}}>{perm} meses</p></div>
+      <div style={{background:"#F6F5F1",borderRadius:10,padding:12,marginBottom:14,display:"flex",gap:16,flexWrap:"wrap"}}>
+        <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Cliente</p><p style={{fontSize:12,fontWeight:700,color:BRAND}}>{contactObj?.name || "—"}</p></div>
+        {contactObj?.empresa && <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Empresa</p><p style={{fontSize:12,color:"#3A4058"}}>{contactObj.empresa}</p></div>}
+        <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Tipo</p><p style={{fontSize:12,color:"#3A4058"}}>{tipoInst==="negocio"?"🏢 Negocio":"🏠 Residencial"}</p></div>
+        <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Fecha</p><p style={{fontSize:12,color:"#3A4058"}}>{fecha}</p></div>
+        <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Permanencia</p><p style={{fontSize:12,color:"#3A4058"}}>{perm} meses</p></div>
       </div>
 
       {/* Items table */}
       <div style={{overflowX:"auto",marginBottom:14}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead>
-            <tr style={{background:"#f8f9fd"}}>
+            <tr style={{background:"#F6F5F1"}}>
               {["Producto","Uds.","Modalidad","Cuota/mes (IVA)","Coste único"].map(h=>(
-                <th key={h} style={{padding:"7px 10px",textAlign:h==="Cuota/mes (IVA)"||h==="Coste único"?"right":"left",fontSize:10,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}}>{h}</th>
+                <th key={h} style={{padding:"7px 10px",textAlign:h==="Cuota/mes (IVA)"||h==="Coste único"?"right":"left",fontSize:10,fontWeight:700,color:"#5B6178",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -670,21 +670,21 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
               const cuotaIvaU = it.modoPrecio==="pvp" ? 0 : (p.cuota_con_iva||0);
               const unicoU    = it.modoPrecio==="pvp" ? (p.precio_sin_iva||0) : (p.precio_instalacion||0);
               return (
-                <tr key={it.productId} style={{borderTop:"1px solid #f0f3fb"}}>
-                  <td style={{padding:"7px 10px",fontWeight:600,color:"#1e2a4a"}}>{p.nombre||"—"}</td>
+                <tr key={it.productId} style={{borderTop:"1px solid #F6F5F1"}}>
+                  <td style={{padding:"7px 10px",fontWeight:600,color:"#0B1233"}}>{p.nombre||"—"}</td>
                   <td style={{padding:"7px 10px",textAlign:"left"}}>{it.cantidad}</td>
                   <td style={{padding:"7px 10px"}}><span style={{fontSize:10,fontWeight:700,background:it.modoPrecio==="pvp"?"#fffbeb":"#eff6ff",color:it.modoPrecio==="pvp"?"#d97706":BRAND,padding:"1px 7px",borderRadius:20}}>{it.modoPrecio==="pvp"?"Compra":"Cuota"}</span></td>
                   <td style={{padding:"7px 10px",textAlign:"right",fontWeight:700,color:BRAND}}>{cuotaU>0?fmtE(cuotaIvaU*it.cantidad,"/mes"):"—"}</td>
-                  <td style={{padding:"7px 10px",textAlign:"right",color:"#6b7280"}}>{unicoU>0?fmtE(unicoU*it.cantidad):"Incluido"}</td>
+                  <td style={{padding:"7px 10px",textAlign:"right",color:"#5B6178"}}>{unicoU>0?fmtE(unicoU*it.cantidad):"Incluido"}</td>
                 </tr>
               );
             })}
           </tbody>
           <tfoot>
-            <tr style={{borderTop:"2px solid #002292",background:"#eff6ff"}}>
+            <tr style={{borderTop:"2px solid #00208F",background:"#eff6ff"}}>
               <td colSpan={3} style={{padding:"9px 10px",fontWeight:800,color:BRAND,fontSize:13}}>TOTAL</td>
               <td style={{padding:"9px 10px",textAlign:"right",fontWeight:800,color:BRAND,fontSize:13}}>{fmtE(cuotaIva, "/mes")}</td>
-              <td style={{padding:"9px 10px",textAlign:"right",fontWeight:700,color:"#6b7280"}}>{costeUnico>0?fmtE(costeUnico):"—"}</td>
+              <td style={{padding:"9px 10px",textAlign:"right",fontWeight:700,color:"#5B6178"}}>{costeUnico>0?fmtE(costeUnico):"—"}</td>
             </tr>
           </tfoot>
         </table>
@@ -711,7 +711,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         </div>
         <div style={{display:"flex",gap:6,marginBottom:20}}>
           {[1,2,3].map(n=>(
-            <div key={n} style={{flex:1,height:4,borderRadius:2,background:step>=n?BRAND:"#e8ecf8"}}/>
+            <div key={n} style={{flex:1,height:4,borderRadius:2,background:step>=n?BRAND:"#E4E2DA"}}/>
           ))}
         </div>
 
@@ -720,7 +720,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         {step===3 && renderStep3()}
 
         {/* Navigation */}
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:20,borderTop:"1px solid #f0f3fb",paddingTop:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:20,borderTop:"1px solid #F6F5F1",paddingTop:16}}>
           <button className="btn-g" onClick={step===1?onClose:()=>setStep(s=>s-1)}>
             {step===1?"Cancelar":"← Anterior"}
           </button>
@@ -823,7 +823,7 @@ function ProductFormModal({ product, onSave, onClose }) {
         </div>
         <div style={{marginTop:14,display:"flex",alignItems:"center",gap:8}}>
           <input type="checkbox" id="activo" checked={form.activo} onChange={e=>upd("activo",e.target.checked)} style={{width:14,height:14,accentColor:BRAND}} />
-          <label htmlFor="activo" style={{fontSize:13,color:"#374151",cursor:"pointer"}}>Producto activo</label>
+          <label htmlFor="activo" style={{fontSize:13,color:"#3A4058",cursor:"pointer"}}>Producto activo</label>
         </div>
         <div style={{display:"flex",gap:8,marginTop:18,justifyContent:"flex-end"}}>
           <button className="btn-g" onClick={onClose}>Cancelar</button>
@@ -854,8 +854,8 @@ export function ContactQuotes({ contactId, contacts, user }) {
     load();
   }, [contactId]);
 
-  if (loading) return <p style={{color:"#9ca3af",fontSize:12,padding:"16px 0"}}>Cargando presupuestos…</p>;
-  if (quotes.length === 0) return <p style={{color:"#9ca3af",fontSize:12,padding:"16px 0",textAlign:"center"}}>No hay presupuestos para este contacto.</p>;
+  if (loading) return <p style={{color:"#8A8FA3",fontSize:12,padding:"16px 0"}}>Cargando presupuestos…</p>;
+  if (quotes.length === 0) return <p style={{color:"#8A8FA3",fontSize:12,padding:"16px 0",textAlign:"center"}}>No hay presupuestos para este contacto.</p>;
 
   const contact = contacts.find(c => c.id === contactId) || {};
 
@@ -868,18 +868,18 @@ export function ContactQuotes({ contactId, contacts, user }) {
           products, q.tipo_instalacion
         );
         return (
-          <div key={q.id} style={{background:"#f8f9fd",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div key={q.id} style={{background:"#F6F5F1",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <div>
               <p style={{fontSize:12,fontWeight:700,color:BRAND}}>Presupuesto {q.id.slice(-8).toUpperCase()}</p>
               <div style={{display:"flex",gap:8,marginTop:3}}>
-                <span style={{fontSize:10,color:"#9ca3af"}}>📅 {q.fecha}</span>
+                <span style={{fontSize:10,color:"#8A8FA3"}}>📅 {q.fecha}</span>
                 <span style={{fontSize:10,fontWeight:700,color:q.tipo_instalacion==="negocio"?"#d97706":"#059669"}}>{q.tipo_instalacion==="negocio"?"🏢":"🏠"} {q.tipo_instalacion==="negocio"?"Negocio":"Residencial"}</span>
-                <span style={{fontSize:10,color:"#9ca3af"}}>{items.length} productos</span>
+                <span style={{fontSize:10,color:"#8A8FA3"}}>{items.length} productos</span>
               </div>
             </div>
             <div style={{textAlign:"right"}}>
               <p style={{fontSize:14,fontWeight:800,color:BRAND}}>{fmtE(cuotaIva, "/mes")}</p>
-              {costeUnico > 0 && <p style={{fontSize:10,color:"#6b7280"}}>+ {fmtE(costeUnico)} inst.</p>}
+              {costeUnico > 0 && <p style={{fontSize:10,color:"#5B6178"}}>+ {fmtE(costeUnico)} inst.</p>}
             </div>
             <button className="btn-p" style={{fontSize:11,padding:"5px 10px",flexShrink:0}} onClick={()=>
               printQuote({ quoteId:q.id, fecha:q.fecha, tipoInst:q.tipo_instalacion, notas:q.notas,
@@ -1020,8 +1020,8 @@ export default function Productos({ user, contacts }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>📦 Productos & Presupuestos</h1>
-          <p style={{color:"#9ca3af",fontSize:12}}>Catálogo de servicios y generador de presupuestos</p>
+          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>📦 Productos & Presupuestos</h1>
+          <p style={{color:"#8A8FA3",fontSize:12}}>Catálogo de servicios y generador de presupuestos</p>
         </div>
         <button className="btn-p" onClick={()=>setWizard(true)}>+ Nuevo presupuesto</button>
       </div>
@@ -1036,7 +1036,7 @@ export default function Productos({ user, contacts }) {
         <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:12}}>
           <p style={{fontWeight:700,color:"#dc2626",marginBottom:4}}>⚠️ Error al cargar desde Supabase</p>
           <p style={{color:"#991b1b",fontFamily:"monospace"}}>{dbError}</p>
-          <p style={{color:"#6b7280",marginTop:6}}>
+          <p style={{color:"#5B6178",marginTop:6}}>
             Causa más probable: <strong>Row Level Security (RLS)</strong> activo sin política SELECT.
             Ejecuta en Supabase SQL Editor:<br/>
             <code style={{background:"#fee2e2",padding:"2px 6px",borderRadius:4,display:"inline-block",marginTop:4}}>
@@ -1048,7 +1048,7 @@ export default function Productos({ user, contacts }) {
       )}
 
       {loading ? (
-        <div style={{textAlign:"center",padding:48,color:"#9ca3af"}}><p style={{fontSize:32,marginBottom:8}}>⏳</p><p>Cargando…</p></div>
+        <div style={{textAlign:"center",padding:48,color:"#8A8FA3"}}><p style={{fontSize:32,marginBottom:8}}>⏳</p><p>Cargando…</p></div>
       ) : tab==="catalogo" ? (
         <CatalogoView products={visibleProducts} catFilter={catFilter} setCatFilter={setCatFilter} canEdit={canEdit} onEdit={p=>setEditProd(p)} onAdd={()=>setEditProd({})} onToggle={toggleProduct} allowedCatKeys={allowedCatKeys} />
       ) : (

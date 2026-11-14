@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./utils/supabase";
 
-const BRAND = "#002292";
+const BRAND = "#00208F";
 const DIAS  = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
 
 const ACTIVIDAD = {
   llamada:           { label:"Llamada",          icon:"📞", color:"#2563eb", light:"#dbeafe", duracion:15  },
   visita_particular: { label:"Visita particular", icon:"🏠", color:"#059669", light:"#d1fae5", duracion:60  },
   visita_empresa:    { label:"Visita empresa",    icon:"🏢", color:"#d97706", light:"#fef3c7", duracion:90  },
-  administrativo:    { label:"Administrativo",    icon:"📋", color:"#6b7280", light:"#f3f4f6", duracion:30  },
+  administrativo:    { label:"Administrativo",    icon:"📋", color:"#5B6178", light:"#f3f4f6", duracion:30  },
   formacion:         { label:"Formación",         icon:"🎓", color:"#7c3aed", light:"#ede9fe", duracion:60  },
   seguimiento:       { label:"Seguimiento",       icon:"🔄", color:"#0891b2", light:"#cffafe", duracion:20  },
 };
@@ -404,11 +404,11 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>
+          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>
             📅 Mi Semana
-            {viewUserId!==user.id&&viewUser&&<span style={{fontSize:16,color:"#9ca3af",fontWeight:400}}> — {viewUser.name}</span>}
+            {viewUserId!==user.id&&viewUser&&<span style={{fontSize:16,color:"#8A8FA3",fontWeight:400}}> — {viewUser.name}</span>}
           </h1>
-          <p style={{color:"#9ca3af",fontSize:12}}>Semana del {dayLabel(weekStart,0)} al {dayLabel(weekStart,4)}</p>
+          <p style={{color:"#8A8FA3",fontSize:12}}>Semana del {dayLabel(weekStart,0)} al {dayLabel(weekStart,4)}</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           {canViewOthers&&allUsers&&(
@@ -431,7 +431,7 @@ export default function MiSemana({ user, allUsers, onAddTasks, onRemoveTasks, on
       </div>
 
       {loading ? (
-        <div style={{textAlign:"center",padding:48,color:"#9ca3af"}}>
+        <div style={{textAlign:"center",padding:48,color:"#8A8FA3"}}>
           <p style={{fontSize:32,marginBottom:8}}>⏳</p><p>Cargando semana...</p>
         </div>
       ) : tab==="horario" ? (
@@ -483,26 +483,26 @@ function ScheduleEditor({ schedule, onSave, durations, onSaveDurations }) {
       {/* Horario */}
       <div className="card" style={{padding:24}}>
         <h2 style={{fontSize:15,fontWeight:800,color:BRAND,marginBottom:4}}>🕐 Horario semanal fijo</h2>
-        <p style={{fontSize:12,color:"#9ca3af",marginBottom:20}}>
+        <p style={{fontSize:12,color:"#8A8FA3",marginBottom:20}}>
           Define tu jornada habitual. Se usará para distribuir actividades automáticamente cada semana.
         </p>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {DIAS.map((dia,i)=>(
-            <div key={dia} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr",gap:12,alignItems:"center",padding:"12px 16px",background:"#f8f9fd",borderRadius:10,border:"1px solid #e8ecf8"}}>
+            <div key={dia} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr",gap:12,alignItems:"center",padding:"12px 16px",background:"#F6F5F1",borderRadius:10,border:"1px solid #E4E2DA"}}>
               <span style={{fontWeight:800,color:BRAND,fontSize:13}}>{dia}</span>
               <div>
                 <label className="fl">Mañana</label>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input className="fi" type="time" value={form[i]?.morningStart||""} onChange={e=>upd(i,"morningStart",e.target.value)} />
-                  <span style={{color:"#9ca3af",fontSize:11,flexShrink:0}}>a</span>
+                  <span style={{color:"#8A8FA3",fontSize:11,flexShrink:0}}>a</span>
                   <input className="fi" type="time" value={form[i]?.morningEnd||""} onChange={e=>upd(i,"morningEnd",e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className="fl">Tarde <span style={{fontWeight:400,color:"#9ca3af"}}>(opcional)</span></label>
+                <label className="fl">Tarde <span style={{fontWeight:400,color:"#8A8FA3"}}>(opcional)</span></label>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input className="fi" type="time" value={form[i]?.afternoonStart||""} onChange={e=>upd(i,"afternoonStart",e.target.value)} />
-                  <span style={{color:"#9ca3af",fontSize:11,flexShrink:0}}>a</span>
+                  <span style={{color:"#8A8FA3",fontSize:11,flexShrink:0}}>a</span>
                   <input className="fi" type="time" value={form[i]?.afternoonEnd||""} onChange={e=>upd(i,"afternoonEnd",e.target.value)} />
                 </div>
               </div>
@@ -519,21 +519,21 @@ function ScheduleEditor({ schedule, onSave, durations, onSaveDurations }) {
       {/* Duraciones de actividades */}
       <div className="card" style={{padding:24}}>
         <h2 style={{fontSize:15,fontWeight:800,color:BRAND,marginBottom:4}}>⏱️ Duración de actividades</h2>
-        <p style={{fontSize:12,color:"#9ca3af",marginBottom:20}}>
+        <p style={{fontSize:12,color:"#8A8FA3",marginBottom:20}}>
           Personaliza la duración en minutos de cada tipo de actividad para la planificación automática.
         </p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {Object.entries(ACTIVIDAD).map(([tipo,act])=>(
-            <div key={tipo} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f8f9fd",borderRadius:10,border:"1px solid #e8ecf8"}}>
+            <div key={tipo} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#F6F5F1",borderRadius:10,border:"1px solid #E4E2DA"}}>
               <span style={{fontSize:14,flexShrink:0}}>{act.icon}</span>
-              <span style={{fontSize:12,fontWeight:600,color:"#374151",flex:1,minWidth:0}}>{act.label}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"#3A4058",flex:1,minWidth:0}}>{act.label}</span>
               <input
                 className="fi" type="number" min="1" max="480"
                 value={durForm[tipo]??act.duracion}
                 onChange={e=>setDurForm(d=>({...d,[tipo]:e.target.value}))}
                 style={{width:60,textAlign:"center",borderColor:act.color+"80"}}
               />
-              <span style={{fontSize:11,color:"#9ca3af",flexShrink:0}}>min</span>
+              <span style={{fontSize:11,color:"#8A8FA3",flexShrink:0}}>min</span>
             </div>
           ))}
         </div>
@@ -559,8 +559,8 @@ function DayNote({ fecha, initialNota, onSave }) {
       onBlur={()=>{ if(val!==(initialNota||"")) onSave(fecha,val); }}
       placeholder="Nota del día..."
       style={{
-        width:"100%",marginTop:8,fontSize:10,color:"#6b7280",
-        border:"1px solid #e8ecf8",borderRadius:6,padding:"6px 8px",
+        width:"100%",marginTop:8,fontSize:10,color:"#5B6178",
+        border:"1px solid #E4E2DA",borderRadius:6,padding:"6px 8px",
         resize:"vertical",minHeight:48,fontFamily:"inherit",
         background:"#fafbff",outline:"none",boxSizing:"border-box",
       }}
@@ -636,7 +636,7 @@ function PlanificacionView({
                   style={{borderColor:act.color+"80"}}
                 />
                 {total>0&&(
-                  <div style={{fontSize:10,color:done>=total?"#059669":"#9ca3af",marginTop:3,fontWeight:done>=total?700:400}}>
+                  <div style={{fontSize:10,color:done>=total?"#059669":"#8A8FA3",marginTop:3,fontWeight:done>=total?700:400}}>
                     {done}/{total} {done>=total?"✓":"realizadas"}
                   </div>
                 )}
@@ -670,10 +670,10 @@ function PlanificacionView({
             <p style={{fontSize:10,fontWeight:800,color:overloaded?"#dc2626":"#059669",textTransform:"uppercase",marginBottom:8,letterSpacing:".5px"}}>
               ⚡ Carga horaria
             </p>
-            <div style={{fontSize:12,color:"#374151",marginBottom:4}}>
+            <div style={{fontSize:12,color:"#3A4058",marginBottom:4}}>
               <span style={{fontWeight:700}}>Planificado:</span> {fmtMin(plannedMin)}
             </div>
-            <div style={{fontSize:12,color:"#374151",marginBottom:6}}>
+            <div style={{fontSize:12,color:"#3A4058",marginBottom:6}}>
               <span style={{fontWeight:700}}>Disponible:</span> {fmtMin(availableMin)}
             </div>
             {overloaded&&(
@@ -705,11 +705,11 @@ function PlanificacionView({
             </button>
           </div>
           {templates.length===0&&(
-            <p style={{fontSize:10,color:"#9ca3af",textAlign:"center",padding:"8px 0"}}>Sin plantillas guardadas</p>
+            <p style={{fontSize:10,color:"#8A8FA3",textAlign:"center",padding:"8px 0"}}>Sin plantillas guardadas</p>
           )}
           {templates.map(t=>(
-            <div key={t.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"6px 8px",background:"#f8f9fd",borderRadius:8,border:"1px solid #e8ecf8"}}>
-              <span style={{fontSize:11,color:"#374151",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={t.nombre}>{t.nombre}</span>
+            <div key={t.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"6px 8px",background:"#F6F5F1",borderRadius:8,border:"1px solid #E4E2DA"}}>
+              <span style={{fontSize:11,color:"#3A4058",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={t.nombre}>{t.nombre}</span>
               <button
                 style={{fontSize:10,padding:"2px 6px",background:BRAND,color:"white",border:"none",borderRadius:5,cursor:"pointer",flexShrink:0}}
                 onClick={()=>onApplyTemplate(t.id)}
@@ -726,12 +726,12 @@ function PlanificacionView({
 
         {/* Leyenda */}
         <div className="card" style={{padding:14}}>
-          <p style={{fontSize:10,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",marginBottom:10,letterSpacing:".5px"}}>Tipos · duración</p>
+          <p style={{fontSize:10,fontWeight:800,color:"#8A8FA3",textTransform:"uppercase",marginBottom:10,letterSpacing:".5px"}}>Tipos · duración</p>
           {Object.entries(ACTIVIDAD).map(([k,v])=>(
             <div key={k} style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
               <div style={{width:8,height:8,borderRadius:2,background:v.color,flexShrink:0}}/>
-              <span style={{fontSize:11,color:"#374151"}}>{v.icon} {v.label}</span>
-              <span style={{fontSize:10,color:"#9ca3af",marginLeft:"auto"}}>{durations[k]||v.duracion}′</span>
+              <span style={{fontSize:11,color:"#3A4058"}}>{v.icon} {v.label}</span>
+              <span style={{fontSize:10,color:"#8A8FA3",marginLeft:"auto"}}>{durations[k]||v.duracion}′</span>
             </div>
           ))}
         </div>
@@ -749,17 +749,17 @@ function PlanificacionView({
             const dayNote = notes[fecha];
             return (
               <div key={dia}
-                style={{background:"#f8f9fd",borderRadius:12,padding:10,minHeight:300,border:"2px solid transparent",transition:"border-color .15s"}}
+                style={{background:"#F6F5F1",borderRadius:12,padding:10,minHeight:300,border:"2px solid transparent",transition:"border-color .15s"}}
                 onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=BRAND+"50";}}
                 onDragLeave={e=>{e.currentTarget.style.borderColor="transparent";}}
                 onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor="transparent";if(drag){onMove(drag,dayNum);setDrag(null);}}}
               >
                 {/* Cabecera día */}
-                <div style={{marginBottom:10,paddingBottom:8,borderBottom:"1px solid #e8ecf8"}}>
+                <div style={{marginBottom:10,paddingBottom:8,borderBottom:"1px solid #E4E2DA"}}>
                   <p style={{fontSize:12,fontWeight:800,color:BRAND,textTransform:"uppercase",letterSpacing:".5px"}}>{dia}</p>
-                  <p style={{fontSize:10,color:"#9ca3af"}}>{dayLabel(weekStart,i)}</p>
+                  <p style={{fontSize:10,color:"#8A8FA3"}}>{dayLabel(weekStart,i)}</p>
                   {sch&&(sch.morningStart||sch.afternoonStart)&&(
-                    <p style={{fontSize:9,color:"#9ca3af",marginTop:2}}>
+                    <p style={{fontSize:9,color:"#8A8FA3",marginTop:2}}>
                       {sch.morningStart&&`${sch.morningStart}–${sch.morningEnd}`}
                       {sch.afternoonStart&&` · ${sch.afternoonStart}–${sch.afternoonEnd}`}
                     </p>
@@ -768,7 +768,7 @@ function PlanificacionView({
 
                 {/* Bloques */}
                 {dayBlocks.map(block=>{
-                  const act = ACTIVIDAD[block.tipo]||{color:"#6b7280",light:"#f3f4f6",icon:"•",label:block.tipo};
+                  const act = ACTIVIDAD[block.tipo]||{color:"#5B6178",light:"#f3f4f6",icon:"•",label:block.tipo};
                   return (
                     <div key={block.id} draggable
                       onDragStart={()=>setDrag(block.id)}
@@ -785,12 +785,12 @@ function PlanificacionView({
                     >
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <p style={{fontSize:11,fontWeight:700,color:block.completada?"#9ca3af":act.color,
+                          <p style={{fontSize:11,fontWeight:700,color:block.completada?"#8A8FA3":act.color,
                             textDecoration:block.completada?"line-through":"none",
                             whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                             {act.icon} {act.label}
                           </p>
-                          <p style={{fontSize:9,color:"#9ca3af"}}>{block.startTime} · {block.durationMinutes}′</p>
+                          <p style={{fontSize:9,color:"#8A8FA3"}}>{block.startTime} · {block.durationMinutes}′</p>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,marginLeft:4}}>
                           <input type="checkbox" checked={block.completada}
@@ -805,10 +805,10 @@ function PlanificacionView({
                   );
                 })}
                 {dayBlocks.length===0&&(
-                  <div style={{textAlign:"center",padding:"28px 0",color:"#dde2f0",fontSize:22}}>○</div>
+                  <div style={{textAlign:"center",padding:"28px 0",color:"#C9CBD3",fontSize:22}}>○</div>
                 )}
                 {dayBlocks.length>0&&(
-                  <div style={{fontSize:10,color:"#9ca3af",textAlign:"center",marginTop:6}}>
+                  <div style={{fontSize:10,color:"#8A8FA3",textAlign:"center",marginTop:6}}>
                     {dayBlocks.filter(b=>b.completada).length}/{dayBlocks.length} completadas
                   </div>
                 )}
@@ -862,18 +862,18 @@ function WeeklySummary({ goals, completed, pct, weekStart, userId }) {
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
         <div className="sc" style={{borderLeftColor:weekDone?"#059669":BRAND}}>
-          <div style={{fontSize:28,fontWeight:800,color:weekDone?"#059669":BRAND,fontFamily:"'Barlow Condensed',sans-serif"}}>{pct}%</div>
-          <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>Cumplimiento semanal</div>
+          <div style={{fontSize:28,fontWeight:800,color:weekDone?"#059669":BRAND,fontFamily:"'Poppins',sans-serif"}}>{pct}%</div>
+          <div style={{fontSize:11,color:"#8A8FA3",marginTop:2}}>Cumplimiento semanal</div>
         </div>
-        <div className="sc" style={{borderLeftColor:"#374151"}}>
-          <div style={{fontSize:28,fontWeight:800,color:"#374151",fontFamily:"'Barlow Condensed',sans-serif"}}>{totalDone}/{totalGoal}</div>
-          <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>Actividades completadas</div>
+        <div className="sc" style={{borderLeftColor:"#3A4058"}}>
+          <div style={{fontSize:28,fontWeight:800,color:"#3A4058",fontFamily:"'Poppins',sans-serif"}}>{totalDone}/{totalGoal}</div>
+          <div style={{fontSize:11,color:"#8A8FA3",marginTop:2}}>Actividades completadas</div>
         </div>
         <div className="sc" style={{borderLeftColor:"#d97706"}}>
-          <div style={{fontSize:28,fontWeight:800,color:"#d97706",fontFamily:"'Barlow Condensed',sans-serif"}}>
+          <div style={{fontSize:28,fontWeight:800,color:"#d97706",fontFamily:"'Poppins',sans-serif"}}>
             🔥 {streak!==null?streak:"…"}
           </div>
-          <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>Semanas consecutivas</div>
+          <div style={{fontSize:11,color:"#8A8FA3",marginTop:2}}>Semanas consecutivas</div>
         </div>
       </div>
 
@@ -890,25 +890,25 @@ function WeeklySummary({ goals, completed, pct, weekStart, userId }) {
           return (
             <div key={gc.key} style={{marginBottom:14}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,alignItems:"center"}}>
-                <span style={{fontSize:12,fontWeight:600,color:"#374151"}}>{act.icon} {gc.label}</span>
+                <span style={{fontSize:12,fontWeight:600,color:"#3A4058"}}>{act.icon} {gc.label}</span>
                 <span style={{fontSize:12,fontWeight:700,color:ok?"#059669":act.color}}>{done}/{goal} {ok?"✓":""}</span>
               </div>
-              <div style={{height:8,background:"#f0f3fb",borderRadius:4}}>
+              <div style={{height:8,background:"#F6F5F1",borderRadius:4}}>
                 <div style={{height:"100%",width:`${p}%`,background:ok?"#059669":act.color,borderRadius:4,transition:"width .5s"}}/>
               </div>
             </div>
           );
         })}
         {totalGoal===0&&(
-          <p style={{color:"#9ca3af",fontSize:13,textAlign:"center",padding:"16px 0"}}>Sin objetivos definidos para esta semana.</p>
+          <p style={{color:"#8A8FA3",fontSize:13,textAlign:"center",padding:"16px 0"}}>Sin objetivos definidos para esta semana.</p>
         )}
         {totalGoal>0&&(
-          <div style={{borderTop:"1px solid #f0f3fb",paddingTop:14,marginTop:4}}>
+          <div style={{borderTop:"1px solid #F6F5F1",paddingTop:14,marginTop:4}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <span style={{fontSize:13,fontWeight:700,color:BRAND}}>Total</span>
               <span style={{fontSize:14,fontWeight:800,color:weekDone?"#059669":BRAND}}>{pct}% {weekDone?"🎉":""}</span>
             </div>
-            <div style={{height:10,background:"#f0f3fb",borderRadius:5}}>
+            <div style={{height:10,background:"#F6F5F1",borderRadius:5}}>
               <div style={{height:"100%",width:`${pct}%`,background:weekDone?"#059669":BRAND,borderRadius:5,transition:"width .5s"}}/>
             </div>
           </div>

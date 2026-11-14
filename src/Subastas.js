@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase";
 
-const BRAND = "#002292";
+const BRAND = "#00208F";
 function genId() { return crypto.randomUUID(); }
 function today() { return new Date().toISOString().split("T")[0]; }
 function fmt(v) { return v ? new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(v)) : '—'; }
@@ -9,7 +9,7 @@ function fmt(v) { return v ? new Intl.NumberFormat('es-ES',{style:'currency',cur
 const ESTADOS = {
   Activa:     { color:"#059669", bg:"#d1fae5" },
   Adjudicada: { color:"#2563eb", bg:"#dbeafe" },
-  Desierta:   { color:"#6b7280", bg:"#f3f4f6" },
+  Desierta:   { color:"#5B6178", bg:"#f3f4f6" },
   Suspendida: { color:"#dc2626", bg:"#fee2e2" },
 };
 
@@ -167,8 +167,8 @@ export default function Subastas({ user, contacts, users }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:BRAND}}>⚖️ Subastas Judiciales</h1>
-          <p style={{color:"#9ca3af",fontSize:13}}>{filtered.length} subastas</p>
+          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:28,fontWeight:800,color:BRAND}}>⚖️ Subastas Judiciales</h1>
+          <p style={{color:"#8A8FA3",fontSize:13}}>{filtered.length} subastas</p>
         </div>
         <button className="btn-p" onClick={()=>{setForm({estado:"Activa",comercial_id:user.id});setModal(true);}}>+ Nueva subasta</button>
       </div>
@@ -181,7 +181,7 @@ export default function Subastas({ user, contacts, users }) {
         ))}
       </div>
 
-      {loading && <p style={{color:"#9ca3af",textAlign:"center",padding:40}}>Cargando...</p>}
+      {loading && <p style={{color:"#8A8FA3",textAlign:"center",padding:40}}>Cargando...</p>}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
         {filtered.map(a => {
@@ -191,31 +191,31 @@ export default function Subastas({ user, contacts, users }) {
             <div key={a.id} className="card" style={{padding:18,borderLeft:`4px solid ${est.color}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0,marginRight:8}}>
-                  <p style={{fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".5px"}}>{a.referencia||"Sin referencia"}</p>
+                  <p style={{fontSize:11,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",letterSpacing:".5px"}}>{a.referencia||"Sin referencia"}</p>
                   <h3 style={{fontSize:15,fontWeight:800,color:BRAND,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.inmueble||"Sin inmueble"}</h3>
                 </div>
                 <span className="tag" style={{background:est.bg,color:est.color,whiteSpace:"nowrap",flexShrink:0}}>{a.estado}</span>
               </div>
-              {a.ubicacion&&<p style={{fontSize:12,color:"#6b7280",marginBottom:10}}>📍 {a.ubicacion}</p>}
+              {a.ubicacion&&<p style={{fontSize:12,color:"#5B6178",marginBottom:10}}>📍 {a.ubicacion}</p>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                <div style={{background:"#f8f9fd",borderRadius:7,padding:"6px 10px"}}>
-                  <p style={{fontSize:10,color:"#9ca3af",fontWeight:700,textTransform:"uppercase"}}>Fecha subasta</p>
-                  <p style={{fontSize:13,fontWeight:700,color:"#1e2a4a"}}>{a.fecha_subasta||"—"}</p>
+                <div style={{background:"#F6F5F1",borderRadius:7,padding:"6px 10px"}}>
+                  <p style={{fontSize:10,color:"#8A8FA3",fontWeight:700,textTransform:"uppercase"}}>Fecha subasta</p>
+                  <p style={{fontSize:13,fontWeight:700,color:"#0B1233"}}>{a.fecha_subasta||"—"}</p>
                 </div>
-                <div style={{background:"#f8f9fd",borderRadius:7,padding:"6px 10px"}}>
-                  <p style={{fontSize:10,color:"#9ca3af",fontWeight:700,textTransform:"uppercase"}}>Precio</p>
-                  <p style={{fontSize:13,fontWeight:700,color:"#1e2a4a"}}>{fmt(a.precio_subasta)}</p>
+                <div style={{background:"#F6F5F1",borderRadius:7,padding:"6px 10px"}}>
+                  <p style={{fontSize:10,color:"#8A8FA3",fontWeight:700,textTransform:"uppercase"}}>Precio</p>
+                  <p style={{fontSize:13,fontWeight:700,color:"#0B1233"}}>{fmt(a.precio_subasta)}</p>
                 </div>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:11,color:"#6b7280"}}>👥 {clientCounts[a.id]||0} clientes · {com?.name||"—"}</span>
+                <span style={{fontSize:11,color:"#5B6178"}}>👥 {clientCounts[a.id]||0} clientes · {com?.name||"—"}</span>
                 <button className="btn-p" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setDetail(a)}>Ver detalle →</button>
               </div>
             </div>
           );
         })}
       </div>
-      {!loading&&filtered.length===0&&<p style={{textAlign:"center",padding:48,color:"#9ca3af"}}>No hay subastas{filtro!=="todas"?` con estado "${filtro}"`:""}. {filtro==="todas"?"Crea la primera.":""}</p>}
+      {!loading&&filtered.length===0&&<p style={{textAlign:"center",padding:48,color:"#8A8FA3"}}>No hay subastas{filtro!=="todas"?` con estado "${filtro}"`:""}. {filtro==="todas"?"Crea la primera.":""}</p>}
 
       {modal&&(
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
@@ -299,9 +299,9 @@ function AuctionDetail({ auction, user, users, contacts, onClose, onUpdate }) {
             <div>
               <h2 style={{fontSize:18,fontWeight:800,color:BRAND}}>{form.inmueble||"Subasta"}</h2>
               <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
-                {form.referencia&&<span className="tag" style={{background:"#f0f3fc",color:"#374151"}}>Ref: {form.referencia}</span>}
+                {form.referencia&&<span className="tag" style={{background:"#f0f3fc",color:"#3A4058"}}>Ref: {form.referencia}</span>}
                 <span className="tag" style={{background:est.bg,color:est.color}}>{form.estado}</span>
-                {com&&<span style={{fontSize:11,color:"#6b7280"}}>👤 {com.name}</span>}
+                {com&&<span style={{fontSize:11,color:"#5B6178"}}>👤 {com.name}</span>}
               </div>
             </div>
           </div>
@@ -425,17 +425,17 @@ function AuctionDocuments({ auctionId, user }) {
         </label>
       </div>
       {docs.map(doc=>(
-        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#f8f9fd",borderRadius:8,marginBottom:7}}>
+        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F6F5F1",borderRadius:8,marginBottom:7}}>
           <span style={{fontSize:18}}>📄</span>
           <div style={{flex:1,minWidth:0}}>
-            <p style={{fontSize:12,fontWeight:600,color:"#1e2a4a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.nombre}</p>
-            <p style={{fontSize:10,color:"#9ca3af"}}>{doc.tipo} · {doc.created_at}</p>
+            <p style={{fontSize:12,fontWeight:600,color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.nombre}</p>
+            <p style={{fontSize:10,color:"#8A8FA3"}}>{doc.tipo} · {doc.created_at}</p>
           </div>
           <button className="btn-g" style={{padding:"4px 9px",fontSize:11,flexShrink:0}} onClick={()=>handleDownload(doc)}>⬇️ Descargar</button>
           <button className="btn-g" style={{padding:"4px 8px",fontSize:11,color:"#dc2626",borderColor:"#fecaca",flexShrink:0}} onClick={()=>handleDelete(doc)}>🗑️</button>
         </div>
       ))}
-      {docs.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#9ca3af",fontSize:12}}>Sin documentos. Selecciona el tipo y sube el primer archivo.</p>}
+      {docs.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#8A8FA3",fontSize:12}}>Sin documentos. Selecciona el tipo y sube el primer archivo.</p>}
     </div>
   );
 }
@@ -799,14 +799,14 @@ function AuctionClients({ auction, user, users, contacts }) {
       <div style={{position:"relative",marginBottom:12}}>
         <input className="fi" placeholder="Buscar cliente por nombre, email o teléfono..." value={search} onChange={e=>setSearch(e.target.value)} />
         {results.length>0&&(
-          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"white",border:"1.5px solid #dde2f0",borderRadius:8,boxShadow:"0 4px 14px rgba(0,35,146,.1)",zIndex:50,maxHeight:220,overflowY:"auto"}}>
+          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"white",border:"1.5px solid #C9CBD3",borderRadius:8,boxShadow:"0 4px 14px rgba(0,35,146,.1)",zIndex:50,maxHeight:220,overflowY:"auto"}}>
             {results.slice(0,8).map(c=>(
-              <div key={c.id} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #f0f3fb",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>link(c)}
-                onMouseEnter={e=>e.currentTarget.style.background="#f8f9fd"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
+              <div key={c.id} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #F6F5F1",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>link(c)}
+                onMouseEnter={e=>e.currentTarget.style.background="#F6F5F1"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
                 <div>
                   <span style={{fontSize:13,fontWeight:600,color:BRAND}}>{c.name}</span>
-                  {c.empresa&&<span style={{fontSize:11,color:"#6b7280",marginLeft:6}}>· {c.empresa}</span>}
-                  <p style={{fontSize:11,color:"#9ca3af"}}>{c.phone} {c.email&&`· ${c.email}`}</p>
+                  {c.empresa&&<span style={{fontSize:11,color:"#5B6178",marginLeft:6}}>· {c.empresa}</span>}
+                  <p style={{fontSize:11,color:"#8A8FA3"}}>{c.phone} {c.email&&`· ${c.email}`}</p>
                 </div>
                 <span style={{fontSize:11,color:"#059669",fontWeight:700}}>+ Vincular</span>
               </div>
@@ -824,12 +824,12 @@ function AuctionClients({ auction, user, users, contacts }) {
         const isGenLOI=generatingLOI===lnk.id;
         const isGenLOIJuzgado=generatingLOIJuzgado===lnk.id;
         return (
-          <div key={lnk.id} style={{background:"#f8f9fd",borderRadius:10,padding:13,marginBottom:9,border:lnk.tiene_loi?"1.5px solid #7c3aed20":"1.5px solid transparent"}}>
+          <div key={lnk.id} style={{background:"#F6F5F1",borderRadius:10,padding:13,marginBottom:9,border:lnk.tiene_loi?"1.5px solid #7c3aed20":"1.5px solid transparent"}}>
             {/* Header cliente */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
               <div>
                 <p style={{fontSize:13,fontWeight:700,color:BRAND}}>{c.name}</p>
-                <p style={{fontSize:11,color:"#6b7280"}}>{c.phone&&`📞 ${c.phone}`}{c.email&&` · 📧 ${c.email}`}</p>
+                <p style={{fontSize:11,color:"#5B6178"}}>{c.phone&&`📞 ${c.phone}`}{c.email&&` · 📧 ${c.email}`}</p>
                 {!isEdit&&lnk.fecha_envio&&<p style={{fontSize:11,color:"#059669",marginTop:2}}>📤 Docs enviados: {lnk.fecha_envio}</p>}
                 {!isEdit&&lnk.notas&&<p style={{fontSize:11,color:"#92400e",marginTop:2}}>📝 {lnk.notas}</p>}
               </div>
@@ -855,14 +855,14 @@ function AuctionClients({ auction, user, users, contacts }) {
             )}
 
             {/* Sección LOI */}
-            <div style={{borderTop:"1px solid #e8ecf8",marginTop:10,paddingTop:10}}>
+            <div style={{borderTop:"1px solid #E4E2DA",marginTop:10,paddingTop:10}}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none"}}>
                 <input type="checkbox" checked={!!lnk.tiene_loi} onChange={()=>toggleLOI(lnk)}
                   style={{width:16,height:16,accentColor:"#7c3aed",cursor:"pointer"}} />
                 <span style={{fontSize:12,fontWeight:700,color:"#7c3aed"}}>
                   {lnk.tiene_loi?"✅ Tiene LOI":"☐ Tiene LOI"}
                 </span>
-                {lnk.tiene_loi&&lnk.loi_fecha&&<span style={{fontSize:11,color:"#9ca3af"}}>· {lnk.loi_fecha}</span>}
+                {lnk.tiene_loi&&lnk.loi_fecha&&<span style={{fontSize:11,color:"#8A8FA3"}}>· {lnk.loi_fecha}</span>}
               </label>
 
               {lnk.tiene_loi&&(
@@ -879,7 +879,7 @@ function AuctionClients({ auction, user, users, contacts }) {
                     <div>
                       <label className="fl">Tasas Oficiales (€)</label>
                       <input className="fi" type="text" value={fd.loi_tasas!==''&&fd.loi_tasas!=null?new Intl.NumberFormat('es-ES').format(Number(fd.loi_tasas)):''} readOnly placeholder="5% oferta"
-                        style={{background:"#f0f3fc",color:"#374151",cursor:"default"}} />
+                        style={{background:"#f0f3fc",color:"#3A4058",cursor:"default"}} />
                     </div>
                     <div>
                       <label className="fl">Honorarios (€)</label>
@@ -888,7 +888,7 @@ function AuctionClients({ auction, user, users, contacts }) {
                     <div>
                       <label className="fl">% Honorarios (auto)</label>
                       <input className="fi" type="text" value={fd.loi_honorarios_porcentaje!==''?`${fd.loi_honorarios_porcentaje}%`:''} readOnly placeholder="—"
-                        style={{background:"#f0f3fc",color:"#374151",cursor:"default"}} />
+                        style={{background:"#f0f3fc",color:"#3A4058",cursor:"default"}} />
                     </div>
                   </div>
                   {fd.loi_oferta&&(
@@ -932,7 +932,7 @@ function AuctionClients({ auction, user, users, contacts }) {
           </div>
         );
       })}
-      {linked.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#9ca3af",fontSize:12}}>Sin clientes vinculados. Busca y añade clientes del CRM.</p>}
+      {linked.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#8A8FA3",fontSize:12}}>Sin clientes vinculados. Busca y añade clientes del CRM.</p>}
     </div>
   );
 }
@@ -972,12 +972,12 @@ function AuctionInteractions({ auctionId, user, users, contacts }) {
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <span style={{fontSize:12,color:"#6b7280",fontWeight:600}}>{ints.length} gestiones</span>
+        <span style={{fontSize:12,color:"#5B6178",fontWeight:600}}>{ints.length} gestiones</span>
         <button className="btn-p" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setShowF(s=>!s)}>+ Añadir gestión</button>
       </div>
 
       {showF&&(
-        <div style={{background:"#f8f9fd",borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{background:"#F6F5F1",borderRadius:10,padding:14,marginBottom:14}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
             <div><label className="fl">Tipo</label>
               <select className="fi" value={ni.tipo} onChange={e=>setNi(f=>({...f,tipo:e.target.value}))}>
@@ -1012,17 +1012,17 @@ function AuctionInteractions({ auctionId, user, users, contacts }) {
                 <span style={{fontSize:17}}>{INT_ICONS[i.tipo]||"📝"}</span>
                 <div>
                   <span style={{fontSize:12,fontWeight:700,color:BRAND}}>{i.tipo}</span>
-                  <span style={{fontSize:10,color:"#9ca3af",marginLeft:7}}>{i.fecha} · {u?.name}</span>
+                  <span style={{fontSize:10,color:"#8A8FA3",marginLeft:7}}>{i.fecha} · {u?.name}</span>
                   {c&&<span style={{fontSize:10,color:"#7c3aed",marginLeft:7}}>👤 {c.name}</span>}
                 </div>
               </div>
               <button onClick={()=>del(i.id)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#fca5a5"}}>✕</button>
             </div>
-            <p style={{fontSize:12,color:"#374151",marginTop:5,lineHeight:1.5}}>{i.descripcion}</p>
+            <p style={{fontSize:12,color:"#3A4058",marginTop:5,lineHeight:1.5}}>{i.descripcion}</p>
           </div>
         );
       })}
-      {ints.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#9ca3af",fontSize:12}}>Sin gestiones registradas.</p>}
+      {ints.length===0&&<p style={{textAlign:"center",padding:"24px 0",color:"#8A8FA3",fontSize:12}}>Sin gestiones registradas.</p>}
     </div>
   );
 }

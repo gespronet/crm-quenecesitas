@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
 
-const BRAND = '#002292';
+const BRAND = '#00208F';
 
 const TIPOS_ACTIVO = [
   { key:'piso',   label:'Piso',   icon:'🏠' },
@@ -22,7 +22,7 @@ const ORIGENES = [
 ];
 
 const ESTADOS_VD = {
-  identificado:      { label:'Identificado',    color:'#6b7280', bg:'#f3f4f6' },
+  identificado:      { label:'Identificado',    color:'#5B6178', bg:'#f3f4f6' },
   'análisis':        { label:'Análisis',        color:'#2563eb', bg:'#dbeafe' },
   propuesta:         { label:'Propuesta',       color:'#7c3aed', bg:'#f5f3ff' },
   'negociación':     { label:'Negociación',     color:'#d97706', bg:'#fef3c7' },
@@ -52,14 +52,14 @@ function calcMargen(precioEntidad, precioMercado) {
 }
 
 function margenColor(m) {
-  if (m === null || m === undefined) return { color:'#6b7280', bg:'#f3f4f6' };
+  if (m === null || m === undefined) return { color:'#5B6178', bg:'#f3f4f6' };
   if (m > 20) return { color:'#059669', bg:'#d1fae5' };
   if (m >= 5) return { color:'#d97706', bg:'#fef3c7' };
   return { color:'#dc2626', bg:'#fee2e2' };
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, color:'#374151', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -125,8 +125,8 @@ export default function VentaDirecta({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🏷️ Venta Directa</h1>
-          <p style={{ color:'#9ca3af', fontSize:13 }}>{filtered.length} activos</p>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🏷️ Venta Directa</h1>
+          <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} activos</p>
         </div>
         <button className="btn-p" onClick={() => setModal('new')}>+ Nuevo activo</button>
       </div>
@@ -141,8 +141,8 @@ export default function VentaDirecta({ user, users, contacts }) {
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
             <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-            <div style={{ fontSize:24, fontWeight:800, color:s.c, fontFamily:"'Barlow Condensed',sans-serif" }}>{s.v}</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{s.l}</div>
+            <div style={{ fontSize:24, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+            <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -176,9 +176,9 @@ export default function VentaDirecta({ user, users, contacts }) {
       </div>
 
       {loading ? (
-        <p style={{ color:'#9ca3af', fontSize:13 }}>Cargando...</p>
+        <p style={{ color:'#8A8FA3', fontSize:13 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#9ca3af', fontSize:14 }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#8A8FA3', fontSize:14 }}>
           {visibles.length === 0 ? 'No hay activos. Añade el primero.' : 'Sin resultados con los filtros aplicados.'}
         </div>
       ) : (
@@ -186,9 +186,9 @@ export default function VentaDirecta({ user, users, contacts }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8f9fd' }}>
+                <tr style={{ background:'#F6F5F1' }}>
                   {['Referencia','Nombre','Tipo','Origen','Localidad','Precio entidad','Precio mercado','Margen','Estado',''].map(h => (
-                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6b7280', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
+                    <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -199,13 +199,13 @@ export default function VentaDirecta({ user, users, contacts }) {
                   const estado = ESTADOS_VD[a.estado] || ESTADOS_VD.identificado;
                   const mc = margenColor(a.margen_pct);
                   return (
-                    <tr key={a.id} className="tr" style={{ borderTop:'1px solid #f0f3fb' }}>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#9ca3af', whiteSpace:'nowrap' }}>{a.referencia || '—'}</td>
+                    <tr key={a.id} className="tr" style={{ borderTop:'1px solid #F6F5F1' }}>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#8A8FA3', whiteSpace:'nowrap' }}>{a.referencia || '—'}</td>
                       <td style={{ padding:'9px 13px' }}>
                         <button onClick={() => setModal(a)} style={{ fontSize:13, fontWeight:700, color:BRAND, background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'left' }}>
                           {a.nombre}
                         </button>
-                        {a.entidad && <div style={{ fontSize:11, color:'#9ca3af' }}>{a.entidad}</div>}
+                        {a.entidad && <div style={{ fontSize:11, color:'#8A8FA3' }}>{a.entidad}</div>}
                       </td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {tipo && <span className="tag" style={{ background:'#f0f3fc', color:BRAND }}>{tipo.icon} {tipo.label}</span>}
@@ -213,11 +213,11 @@ export default function VentaDirecta({ user, users, contacts }) {
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         {origen && <span className="tag" style={{ background:origen.bg, color:origen.color }}>{origen.label}</span>}
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>
                         {[a.localidad, a.provincia].filter(Boolean).join(' · ') || '—'}
                       </td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.precio_entidad)}</td>
-                      <td style={{ padding:'9px 13px', fontSize:12, color:'#374151', whiteSpace:'nowrap' }}>{fmt(a.precio_mercado)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.precio_entidad)}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, color:'#3A4058', whiteSpace:'nowrap' }}>{fmt(a.precio_mercado)}</td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }}>
                         <span className="tag" style={{ background:mc.bg, color:mc.color, fontWeight:800 }}>
                           {a.margen_pct !== null && a.margen_pct !== undefined ? `${Number(a.margen_pct).toFixed(1)}%` : '—'}
@@ -393,7 +393,7 @@ function ActivoModal({ activo, user, users, contacts, isAdmin, onClose, onSaved,
           </Grid2>
           <div style={{ marginTop:14, padding:'14px 16px', borderRadius:10, background:mc.bg, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span style={{ fontSize:12, fontWeight:700, color:mc.color, textTransform:'uppercase', letterSpacing:'.5px' }}>Margen sobre precio de entidad</span>
-            <span style={{ fontSize:26, fontWeight:800, color:mc.color, fontFamily:"'Barlow Condensed',sans-serif" }}>
+            <span style={{ fontSize:26, fontWeight:800, color:mc.color, fontFamily:"'Poppins',sans-serif" }}>
               {margenLive !== null ? `${margenLive.toFixed(1)}%` : '—'}
             </span>
           </div>
@@ -417,7 +417,7 @@ function ActivoModal({ activo, user, users, contacts, isAdmin, onClose, onSaved,
             <div style={{ gridColumn:'1/-1', position:'relative' }}>
               <FL>Contacto vinculado (comprador/inversor)</FL>
               {selCon ? (
-                <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8 }}>
                   <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
                   <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
                 </div>
@@ -425,11 +425,11 @@ function ActivoModal({ activo, user, users, contacts, isAdmin, onClose, onSaved,
                 <>
                   <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
                   {filtCon.length > 0 && (
-                    <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #dde2f0', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                       {filtCon.map(c => (
                         <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
-                          style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #f0f3fb' }}
-                          onMouseEnter={e => e.currentTarget.style.background='#f0f3fb'}
+                          style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#F6F5F1'}
                           onMouseLeave={e => e.currentTarget.style.background=''}>
                           {c.name}{c.phone ? ` · ${c.phone}` : ''}
                         </div>
@@ -444,11 +444,11 @@ function ActivoModal({ activo, user, users, contacts, isAdmin, onClose, onSaved,
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas',e.target.value)}
               placeholder="Notas internas sobre el activo, negociación, condiciones..." rows={5}
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde2f0', borderRadius:8, fontSize:13, minHeight:100, resize:'vertical', fontFamily:'inherit', color:'#1e2a4a', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:100, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #e8ecf8', marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && isAdmin && (
               <button onClick={handleDelete} disabled={deleting}
@@ -474,7 +474,7 @@ function ActivoModal({ activo, user, users, contacts, isAdmin, onClose, onSaved,
 function Sec({ title, children }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #e8ecf8' }}>
+      <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:12, paddingBottom:6, borderBottom:'2px solid #E4E2DA' }}>
         {title}
       </h3>
       {children}
@@ -487,5 +487,5 @@ function Grid2({ children }) {
 }
 
 function FL({ children }) {
-  return <label style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
+  return <label style={{ fontSize:11, fontWeight:700, color:'#3A4058', marginBottom:4, display:'block', textTransform:'uppercase', letterSpacing:'.5px' }}>{children}</label>;
 }
