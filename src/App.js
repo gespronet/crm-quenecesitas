@@ -463,8 +463,7 @@ export default function App() {
 
   const navItems = [
     { id:"dashboard",    icon:"📊", label:"Dashboard" },
-    { id:"contacts",     icon:"👥", label:"Prospectos" },
-    { id:"clients",      icon:"🌟", label:"Clientes" },
+    { id:"contacts",     icon:"👥", label:"Contactos" },
     { id:"pipeline",     icon:"📋", label:"Pipeline" },
     { id:"tasks",        icon:"✅", label:"Tareas" },
     { id:"misemana",     icon:"📅", label:"Mi Semana" },
@@ -525,8 +524,8 @@ export default function App() {
         <div className="crm-main-inner" style={{padding:"16px 20px"}}>
           <button className="desk-hamburger" onClick={()=>setSidebar(s=>!s)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",marginBottom:12,color:"#9ca3af"}}>☰</button>
           {view==="dashboard" && <Dashboard contacts={myCon} deals={myDea} tasks={myTas} user={user} />}
-          {view==="contacts"  && <Contacts
-            contacts={myCon.filter(c=>c.tipo==="prospecto")}
+          {(view==="contacts"||view==="clients") && <Contacts
+            contacts={myCon}
             interactions={data.interactions}
             users={data.users}
             deals={data.deals}
@@ -537,20 +536,7 @@ export default function App() {
             onSaveInteraction={saveInteraction}
             onDeleteInteraction={deleteInteraction}
             canSee={canSee}
-          />}
-          {view==="clients"   && <Contacts
-            contacts={myCon.filter(c=>c.tipo==="cliente")}
-            interactions={data.interactions}
-            users={data.users}
-            deals={data.deals}
-            user={user}
-            onSaveContact={saveContact}
-            onDeleteContact={deleteContact}
-            onToClient={toClientContact}
-            onSaveInteraction={saveInteraction}
-            onDeleteInteraction={deleteInteraction}
-            canSee={canSee}
-            isClients
+            initialTipo={view==="clients"?"cliente":"all"}
           />}
           {view==="pipeline"  && <Pipeline
             deals={myDea}
@@ -684,18 +670,31 @@ function Dashboard({contacts,deals,tasks,user}) {
   );
 }
 
-function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDeleteContact,onToClient,onSaveInteraction,onDeleteInteraction,canSee,isClients}) {
+const TIPOS = {
+  prospecto: { label:"Prospecto", color:"#b45309", bg:"#fef3c7" },
+  cliente:   { label:"Cliente",   color:"#047857", bg:"#d1fae5" },
+};
+function TipoBadge({tipo}) {
+  const t = TIPOS[tipo==="cliente"?"cliente":"prospecto"];
+  return <span className="tag" style={{background:t.bg,color:t.color,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{t.label}</span>;
+}
+
+function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDeleteContact,onToClient,onSaveInteraction,onDeleteInteraction,canSee,initialTipo="all"}) {
   const [search,setSearch]=useState("");
+  const [fTipo,setFTipo]=useState(initialTipo);
   const [fLinea,setFLinea]=useState("all");
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({});
   const [detail,setDetail]=useState(null);
 
+  const q=search.trim().toLowerCase();
+  const porTipo={ all:contacts.length, prospecto:contacts.filter(c=>c.tipo!=="cliente").length, cliente:contacts.filter(c=>c.tipo==="cliente").length };
   const filtered=contacts.filter(c=>{
     const lineas=Array.isArray(c.linea)?c.linea:c.linea?[c.linea]:[];
-    return (fLinea==="all"||lineas.includes(fLinea))&&(c.name.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search)||c.empresa?.toLowerCase().includes(search.toLowerCase()));
-  });
-  const openNew=()=>{const defaultLinea = Object.keys(LINEAS).find(k => canSee(k)) || "inmobiliaria";setForm({linea:[defaultLinea],tipo:isClients?"cliente":"prospecto",comercialId:user.id});setModal("new");};
+    const okTipo=fTipo==="all"||(fTipo==="cliente"?c.tipo==="cliente":c.tipo!=="cliente");
+    return okTipo&&(fLinea==="all"||lineas.includes(fLinea))&&(!q||c.name.toLowerCase().includes(q)||c.phone?.includes(search.trim())||c.email?.toLowerCase().includes(q)||c.empresa?.toLowerCase().includes(q));
+  }).sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  const openNew=()=>{const defaultLinea = Object.keys(LINEAS).find(k => canSee(k)) || "inmobiliaria";setForm({linea:[defaultLinea],tipo:fTipo==="cliente"?"cliente":"prospecto",comercialId:user.id});setModal("new");};
   const openEdit=c=>{
     console.log('[openEdit] contact.linea:', c.linea, '| type:', typeof c.linea);
     setForm({...c, linea: parseLinea(c.linea)});
@@ -709,10 +708,17 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>{isClients?"🌟 Clientes":"👥 Prospectos"}</h1>
-          <p style={{color:"#9ca3af",fontSize:12}}>{filtered.length} registros</p>
+          <h1 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>👥 Contactos</h1>
+          <p style={{color:"#9ca3af",fontSize:12}}>{filtered.length} de {contacts.length} contactos</p>
         </div>
-        <button className="btn-p" onClick={openNew}>+ {isClients?"Nuevo cliente":"Nuevo prospecto"}</button>
+        <button className="btn-p" onClick={openNew}>+ Nuevo contacto</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+        {[["all","Todos"],["prospecto","Prospectos"],["cliente","Clientes"]].map(([k,l])=>(
+          <button key={k} type="button" onClick={()=>setFTipo(k)} style={{padding:"7px 14px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:fTipo===k?BRAND:"#dde2f0",background:fTipo===k?BRAND:"white",color:fTipo===k?"white":"#6b7280"}}>
+            {l} <span style={{opacity:.75,fontWeight:600}}>{porTipo[k]}</span>
+          </button>
+        ))}
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <input className="fi" style={{maxWidth:240}} placeholder="🔍 Buscar..." value={search} onChange={e=>setSearch(e.target.value)} />
@@ -726,7 +732,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#f8f9fd"}}>
-              {["Contacto","Empresa","Teléfono","Línea","Comercial","Alta",""].map(h=>(
+              {["Contacto","Estado","Empresa","Teléfono","Línea","Comercial","Alta",""].map(h=>(
                 <th key={h} style={{padding:"9px 13px",textAlign:"left",fontSize:10,fontWeight:700,color:"#6b7280",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:".5px"}}>{h}</th>
               ))}
             </tr></thead>
@@ -747,6 +753,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                       </div>
                     </div>
                   </td>
+                  <td style={{padding:"9px 13px"}}><TipoBadge tipo={c.tipo} /></td>
                   <td style={{padding:"9px 13px",fontSize:12,color:"#374151"}}>{c.empresa||"—"}</td>
                   <td style={{padding:"9px 13px",fontSize:12,color:"#374151"}}>{c.phone||"—"}</td>
                   <td style={{padding:"9px 13px"}}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{lineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color}}>{lx.label}</span>;})}</div></td>
@@ -756,7 +763,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                     <div style={{display:"flex",gap:4}}>
                       <button className="btn-g" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setDetail(c)}>📋</button>
                       <button className="btn-g" style={{padding:"4px 8px",fontSize:11}} onClick={()=>openEdit(c)}>✏️</button>
-                      {!isClients&&<button className="btn-g" style={{padding:"4px 8px",fontSize:10,color:"#059669",borderColor:"#a7f3d0"}} onClick={()=>toClient(c)}>→ Cliente</button>}
+                      {c.tipo!=="cliente"&&<button className="btn-g" style={{padding:"4px 8px",fontSize:10,color:"#059669",borderColor:"#a7f3d0"}} onClick={()=>toClient(c)}>→ Cliente</button>}
                       <button className="btn-g" style={{padding:"4px 8px",fontSize:11,color:"#dc2626",borderColor:"#fecaca"}} onClick={()=>del(c.id)}>🗑️</button>
                     </div>
                   </td>
@@ -786,6 +793,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                   {com&&["admin","socio"].includes(user.role)&&<p style={{fontSize:10,color:"#9ca3af"}}>{com.name}</p>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end",flexShrink:0}}>
+                  <TipoBadge tipo={c.tipo} />
                   {lineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color,fontSize:9}}>{lx.label}</span>;})}
                 </div>
               </div>
@@ -797,7 +805,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button className="btn-p" style={{flex:1,minWidth:100,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>setDetail(c)}>📋 Ver ficha</button>
                 <button className="btn-g" style={{flex:1,minWidth:80,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>openEdit(c)}>✏️ Editar</button>
-                {!isClients&&<button className="btn-g" style={{fontSize:12,color:"#059669",borderColor:"#a7f3d0",padding:"10px 12px"}} onClick={()=>toClient(c)}>→ Cliente</button>}
+                {c.tipo!=="cliente"&&<button className="btn-g" style={{fontSize:12,color:"#059669",borderColor:"#a7f3d0",padding:"10px 12px"}} onClick={()=>toClient(c)}>→ Cliente</button>}
                 <button className="btn-g" style={{fontSize:12,color:"#dc2626",borderColor:"#fecaca",padding:"10px 12px"}} onClick={()=>del(c.id)}>🗑️</button>
               </div>
             </div>
@@ -815,14 +823,24 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
         onSaveInteraction={onSaveInteraction}
         onDeleteInteraction={onDeleteInteraction}
         onEdit={()=>{openEdit(detail);setDetail(null);}}
-        onToClient={!isClients?onToClient:null}
+        onToClient={detail.tipo!=="cliente"?onToClient:null}
       />}
 
       {modal&&(
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="mo">
-            <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:16}}>{modal==="new"?(isClients?"Nuevo cliente":"Nuevo prospecto"):"Editar"}</h2>
+            <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:16}}>{modal==="new"?"Nuevo contacto":"Editar contacto"}</h2>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+              {/* Estado: prospecto o cliente */}
+              <div style={{gridColumn:"1 / -1"}}>
+                <label className="fl">Estado</label>
+                <div style={{display:"flex",gap:7,marginTop:4}}>
+                  {[["prospecto","Prospecto"],["cliente","Cliente"]].map(([k,l])=>{
+                    const sel=(form.tipo||"prospecto")===k;
+                    return <button key={k} type="button" onClick={()=>setForm(f=>({...f,tipo:k}))} style={{padding:"5px 14px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?TIPOS[k].color:"#dde2f0",background:sel?TIPOS[k].bg:"white",color:sel?TIPOS[k].color:"#6b7280"}}>{l}</button>;
+                  })}
+                </div>
+              </div>
               {/* Tipo de cliente */}
               <div style={{gridColumn:"1 / -1"}}>
                 <label className="fl">Tipo de cliente</label>
