@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './utils/supabase';
 import { MANDATO_HTML, DESISTIMIENTO_HTML } from './mandatoPlantillas';
+import { EditorArras, HistorialArras } from './Arras';
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -10,22 +11,23 @@ const truthy = v => v !== undefined && v !== null && v !== false && String(v).tr
 // Mini-motor Mustache: {{#a.b}}…{{/a.b}} (mostrar si hay valor) y {{a.b}} (escapado, «—» si vacío)
 export function renderTpl(tpl, data) {
   let out = tpl.replace(/\{\{#([\w.]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_, k, inner) => truthy(getPath(data, k)) ? inner : '');
+  out = out.replace(/\{\{\^([\w.]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_, k, inner) => truthy(getPath(data, k)) ? '' : inner);
   out = out.replace(/\{\{([\w.]+)\}\}/g, (_, k) => { const v = getPath(data, k); return truthy(v) ? esc(v) : '—'; });
   return out;
 }
 
-const eur = v => {
+export const eur = v => {
   if (v === '' || v == null || isNaN(Number(v))) return '';
   const n = Math.round(Number(v) * 100) / 100;
   const [i, d] = n.toFixed(2).split('.');
   return i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (d !== '00' ? ',' + d : '') + ' €';
 };
-const fechaLarga = iso => {
+export const fechaLarga = iso => {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
 };
-const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+export const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 
 // Imprime un HTML en un iframe oculto (el usuario elige «Guardar como PDF» para descargar)
 export function imprimirHTML(html, titulo) {
@@ -46,7 +48,7 @@ export function imprimirHTML(html, titulo) {
 }
 
 // ─── Datos por defecto desde la ficha ────────────────────────────────────────
-function datosPropietario(c) {
+export function datosPropietario(c) {
   if (!c) return { nombre:'', nif:'', domicilio:'', representante:'', representante_dni:'', firmante:'', firmante_dni:'' };
   const dom = (a, cp, loc, prov) => [a, [cp, loc].filter(Boolean).join(' '), prov].filter(Boolean).join(' · ');
   if (c.tipo_cliente === 'empresa' || c.tipoCliente === 'empresa') {
@@ -67,7 +69,7 @@ function datosPropietario(c) {
   };
 }
 
-function datosInmueble(p) {
+export function datosInmueble(p) {
   const loc = p.localidad && p.municipio && p.localidad !== p.municipio ? `${p.localidad} (${p.municipio})` : (p.localidad || p.municipio || '');
   const dir = [p.direccion, [p.codigo_postal, loc].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
   const sup = [p.superficie_construida && `${p.superficie_construida} m² construidos`, p.superficie_parcela && `parcela ${p.superficie_parcela} m²`].filter(Boolean).join(' · ');
@@ -83,6 +85,8 @@ function datosInmueble(p) {
 export default function TabMandato({ property, user, contacts }) {
   const [hist, setHist] = useState([]);
   const [editor, setEditor] = useState(false);
+  const [arras, setArras] = useState(false);
+  const [recArras, setRecArras] = useState(0);
   const load = async () => {
     const { data } = await supabase.from('mandatos').select('id,referencia,fecha,datos,html,creado_por,created_at')
       .eq('property_id', String(property.id)).order('created_at', { ascending:false });
@@ -90,16 +94,18 @@ export default function TabMandato({ property, user, contacts }) {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [property.id]);
 
+  if (arras) return <EditorArras property={property} user={user} contacts={contacts} onClose={() => { setArras(false); setRecArras(x => x + 1); }} />;
   if (editor) return <EditorMandato property={property} user={user} contacts={contacts} onClose={() => { setEditor(false); load(); }} />;
 
   return (
     <div>
       <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:20 }}>
         <button className="btn-p" onClick={() => setEditor(true)}>+ Generar mandato de venta</button>
+        <button className="btn-p" onClick={() => setArras(true)}>+ Generar contrato de arras</button>
         <button className="btn-g" onClick={() => imprimirHTML(DESISTIMIENTO_HTML, 'Formulario de desistimiento')}>Formulario de desistimiento</button>
       </div>
       <div className="card" style={{ padding:24 }}>
-        <h3 style={{ marginBottom:14 }}>Mandatos generados</h3>
+        <h3 style={{ marginBottom:14 }}>Mandatos de venta</h3>
         {hist.length === 0 && <p style={{ color:'#5B6178', fontSize:14 }}>Todavía no se ha generado ningún mandato para este inmueble.</p>}
         {hist.map(m => (
           <div key={m.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 0', borderTop:'1px solid #E4E2DA', flexWrap:'wrap' }}>
@@ -113,16 +119,17 @@ export default function TabMandato({ property, user, contacts }) {
           </div>
         ))}
       </div>
+      <HistorialArras property={property} recarga={recArras} />
     </div>
   );
 }
 
 
 // Componentes de maquetación del formulario (fuera del editor para no perder el foco)
-const F = ({ label, children, span }) => (
+export const F = ({ label, children, span }) => (
     <div style={{ gridColumn: span ? '1 / -1' : undefined }}><label className="fl">{label}</label>{children}</div>
   );
-const Bloque = ({ t, children }) => (
+export const Bloque = ({ t, children }) => (
     <div className="card" style={{ padding:20, marginBottom:14 }}>
       <div className="eyebrow" style={{ marginBottom:12 }}>{t}</div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>{children}</div>
@@ -283,7 +290,7 @@ function EditorMandato({ property, user, contacts, onClose }) {
 }
 
 // Vista previa A4 escalada al ancho disponible
-function VistaPrevia({ html }) {
+export function VistaPrevia({ html }) {
   const box = useRef(null), ifr = useRef(null);
   const [scale, setScale] = useState(0.6);
   const [h, setH] = useState(1123);

@@ -21,7 +21,31 @@ const EXTRAS = [
   {key:'aire_acondicionado',label:'Aire acondicionado'},{key:'armarios_empotrados',label:'Armarios empotrados'},
   {key:'amueblado',label:'Amueblado'},{key:'mascotas',label:'Permite mascotas'},
 ];
-const DOC_TIPOS = ['Nota simple','Nota catastro','Certificado energético','Planos','Cédula de habitabilidad','IBI','Estatutos comunidad','Otros'];
+// Checklist documental del vendedor. «id» = valor guardado en property_documents.tipo
+const DOCS_OBLIGATORIOS = [
+  { id:'Escritura de propiedad', info:'Copia autorizada de la escritura que acredita la titularidad.' },
+  { id:'DNI / NIE propietarios', info:'En vigor, de todos los propietarios que vayan a firmar.' },
+  { id:'Nota simple registral', info:'Actualizada (menos de 3 meses): descripción, titularidad y cargas.', caduca:90 },
+  { id:'Certificado de eficiencia energética', info:'Obligatorio para publicar y anunciar la vivienda.' },
+  { id:'Último recibo del IBI', info:'Pagado.' },
+  { id:'Certificado de deuda cero de la comunidad', info:'Firmado por el administrador o el presidente.' },
+  { id:'Cédula de habitabilidad / Licencia de primera ocupación', info:'Obligatoria en la mayoría de comunidades autónomas.' },
+  { id:'Certificado ITE / IEE', info:'Si el edificio tiene más de 50 años.' },
+  { id:'Certificado catastral', info:'Descriptivo y gráfico. Comprueba que superficie y referencia coinciden con el Registro.' },
+];
+const DOCS_ESPECIALES = [
+  { id:'Certificado de deuda pendiente / cancelación de hipoteca', info:'Si hay hipoteca que se cancela en la firma.' },
+  { id:'Estatutos y normas de la comunidad', info:'Para informar al comprador de las reglas internas.' },
+  { id:'Últimas facturas de suministros', info:'Agua, luz y gas, para los cambios de titularidad.' },
+  { id:'Autorización de venta VPO', info:'Visado o descalificación de la comunidad autónoma.' },
+  { id:'Poder notarial / libro de familia / capitulaciones', info:'Si hay representantes, menores o régimen matrimonial específico.' },
+  { id:'Herencia: aceptación y pago de Sucesiones', info:'Si el inmueble procede de una herencia: escritura de aceptación y justificante del impuesto.' },
+  { id:'Contrato de alquiler y renuncia de tanteo', info:'Si está alquilada: contrato vigente y renuncia del inquilino a los derechos de tanteo y retracto.' },
+  { id:'Documentación de no residente', info:'NIE y modelo 211: el comprador retiene el 3 % del precio si el vendedor no reside en España.' },
+  { id:'Licencias de obra / legalización de ampliaciones', info:'Si se ha reformado o ampliado: que lo construido coincida con lo inscrito.' },
+  { id:'Planos', info:'Útiles para publicar y para el comprador.' },
+];
+const DOC_TIPOS = [...DOCS_OBLIGATORIOS, ...DOCS_ESPECIALES].map(d => d.id).concat('Otros');
 
 const EMPTY_FORM = {
   titulo:'', tipo_inmueble:'', estado_venta:'Disponible', estado_conservacion:'',
@@ -242,7 +266,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
     { id:'fotos',      label:'📷 Fotos',      disabled: isNew && !prop },
     { id:'docs',       label:'📄 Documentos', disabled: isNew && !prop },
     { id:'publicacion',label:'🌐 Publicación', disabled: isNew && !prop },
-    { id:'mandato',    label:'✍️ Mandato',    disabled: isNew && !prop },
+    { id:'mandato',    label:'✍️ Contratos',    disabled: isNew && !prop },
   ];
 
   return (
@@ -290,7 +314,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
 
       {tab === 'datos'       && <TabDatos property={prop} user={user} users={inmoUsers} contacts={contacts} isAdmin={isAdmin} onSaved={handleSaved} onDeleted={() => onDeleted(prop?.id)} />}
       {tab === 'fotos'       && prop && <TabFotos property={prop} onPropUpdated={handleSaved} />}
-      {tab === 'docs'        && prop && <TabDocs property={prop} user={user} />}
+      {tab === 'docs'        && prop && <TabDocs property={prop} user={user} onPropUpdated={handleSaved} />}
       {tab === 'publicacion' && prop && <TabPublicacion property={prop} onPropUpdated={handleSaved} />}
       {tab === 'mandato'     && prop && <TabMandato property={prop} user={user} contacts={contacts} />}
     </div>
@@ -790,10 +814,11 @@ function TabFotos({ property, onPropUpdated }) {
 
 // ─── Tab 3: Documentos ────────────────────────────────────────────────────────
 
-function TabDocs({ property, user }) {
+function TabDocs({ property, user, onPropUpdated }) {
   const [docs, setDocs] = useState([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState('');
   const [docTipo, setDocTipo] = useState('Otros');
+  const [noAplica, setNoAplica] = useState(property.docs_no_aplica || []);
 
   useEffect(() => { loadDocs(); }, [property.id]); // eslint-disable-line
 
@@ -802,31 +827,33 @@ function TabDocs({ property, user }) {
     setDocs(data || []);
   };
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    e.target.value = '';
+  const subir = async (file, tipo) => {
     if (!file) return;
     if (file.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF'); return; }
-    setUploading(true);
+    setUploading(tipo);
     try {
-      const ts = Date.now();
-      const fileName = `${ts}-${sanitizeFileName(file.name)}`;
+      const fileName = `${Date.now()}-${sanitizeFileName(file.name)}`;
       const storagePath = `properties/${property.id}/docs/${fileName}`;
       const compressedFile = await compressFileIfPdf(file);
       const { error: upErr } = await supabase.storage.from('documentos').upload(storagePath, compressedFile, { upsert:true });
       if (upErr) throw upErr;
       const { data: rec, error: dbErr } = await supabase.from('property_documents').insert({
         id: crypto.randomUUID(), property_id: property.id, nombre: file.name,
-        tipo: docTipo, url: storagePath, size: file.size,
-        uploaded_by: user.id, created_at: new Date().toISOString(),
+        tipo, url: storagePath, size: file.size, uploaded_by: user.id, created_at: new Date().toISOString(),
       }).select().single();
       if (dbErr) throw dbErr;
       setDocs(d => [rec, ...d]);
-    } catch (e) {
-      alert(`Error al subir: ${e.message}`);
-    } finally {
-      setUploading(false);
-    }
+      if (noAplica.includes(tipo)) toggleNoAplica(tipo);
+    } catch (e) { alert(`Error al subir: ${e.message}`); }
+    finally { setUploading(''); }
+  };
+  const handleUpload = e => { const f = e.target.files[0]; e.target.value = ''; subir(f, docTipo); };
+
+  const toggleNoAplica = async (id) => {
+    const next = noAplica.includes(id) ? noAplica.filter(x => x !== id) : [...noAplica, id];
+    setNoAplica(next);
+    const { data } = await supabase.from('properties').update({ docs_no_aplica: next }).eq('id', property.id).select().single();
+    if (data && onPropUpdated) onPropUpdated(data);
   };
 
   const handleDownload = async (doc) => {
@@ -834,7 +861,6 @@ function TabDocs({ property, user }) {
     if (error) { alert('Error al generar enlace'); return; }
     window.open(data.signedUrl, '_blank');
   };
-
   const handleDelete = async (doc) => {
     if (!window.confirm(`¿Eliminar "${doc.nombre}"?`)) return;
     await supabase.storage.from('documentos').remove([doc.url]);
@@ -842,45 +868,94 @@ function TabDocs({ property, user }) {
     setDocs(d => d.filter(x => x.id !== doc.id));
   };
 
+  const docsDe = id => docs.filter(d => d.tipo === id);
+  const oblig = DOCS_OBLIGATORIOS.filter(d => !noAplica.includes(d.id));
+  const okOblig = oblig.filter(d => docsDe(d.id).length).length;
+  const pct = oblig.length ? Math.round(okOblig / oblig.length * 100) : 100;
+
+  const Fila = ({ d }) => {
+    const lista = docsDe(d.id); const ok = lista.length > 0; const na = noAplica.includes(d.id);
+    const dias = ok ? Math.floor((Date.now() - new Date(lista[0].created_at)) / 864e5) : 0;
+    const caducado = ok && d.caduca && dias > d.caduca;
+    return (
+      <div style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 0', borderTop:'1px solid #E4E2DA', opacity: na ? .5 : 1 }}>
+        <span style={{ width:22, height:22, flexShrink:0, marginTop:1, borderRadius:'7px 7px 7px 0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700,
+          background: ok ? (caducado ? '#FFB81C' : '#00208F') : 'white', color: ok ? (caducado ? '#0B1233' : 'white') : '#8A8FA3', border: ok ? 'none' : '1.5px solid #C9CBD3' }}>
+          {ok ? (caducado ? '!' : '✓') : na ? '–' : ''}
+        </span>
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:14, fontWeight:500, color:'#0B1233', textDecoration: na ? 'line-through' : 'none' }}>{d.id}</p>
+          <p style={{ fontSize:12, color:'#5B6178' }}>{d.info}{caducado ? ` · Tiene ${dias} días: conviene pedir una nueva.` : ''}</p>
+          {lista.map(doc => (
+            <div key={doc.id} style={{ display:'flex', gap:8, alignItems:'center', marginTop:6, fontSize:12 }}>
+              <button onClick={() => handleDownload(doc)} style={{ background:'none', border:'none', padding:0, color:'#00208F', cursor:'pointer', textDecoration:'underline', fontSize:12, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.nombre}</button>
+              <span className="mono" style={{ fontSize:10, color:'#8A8FA3' }}>{new Date(doc.created_at).toLocaleDateString('es-ES')}</span>
+              <button onClick={() => handleDelete(doc)} title="Eliminar" style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer', fontSize:12 }}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:6, flexShrink:0, alignItems:'center' }}>
+          {!ok && (
+            <button onClick={() => toggleNoAplica(d.id)} className="btn-g" style={{ padding:'4px 10px', fontSize:11 }}>{na ? 'Sí aplica' : 'No aplica'}</button>
+          )}
+          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <span className={ok ? 'btn-g' : 'btn-p'} style={{ display:'inline-block', padding:'5px 12px', fontSize:12, pointerEvents:'none' }}>
+              {uploading === d.id ? 'Subiendo…' : ok ? '+ Otro' : 'Subir PDF'}
+            </span>
+            <input type="file" accept=".pdf,application/pdf" style={{ display:'none' }} disabled={!!uploading}
+              onChange={e => { const f = e.target.files[0]; e.target.value = ''; subir(f, d.id); }} />
+          </label>
+        </div>
+      </div>
+    );
+  };
+
+  const otros = docs.filter(d => !DOC_TIPOS.slice(0,-1).includes(d.tipo));
+
   return (
-    <div style={{ maxWidth:700 }}>
-      <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:20, flexWrap:'wrap' }}>
-        <select value={docTipo} onChange={e => setDocTipo(e.target.value)} style={{ ...selSt(), fontSize:13 }}>
-          {DOC_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-          <span style={{ display:'inline-block', padding:'8px 18px', borderRadius:"14px 14px 14px 0", background: uploading ? '#8A8FA3' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
-            {uploading ? 'Subiendo...' : '+ Subir PDF'}
-          </span>
-          <input type="file" accept=".pdf,application/pdf" style={{ display:'none' }} onChange={handleUpload} disabled={uploading} />
-        </label>
+    <div style={{ maxWidth:860 }}>
+      <div className="card" style={{ padding:24, marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12, flexWrap:'wrap', marginBottom:12 }}>
+          <div>
+            <div className="eyebrow">Documentos obligatorios del vendedor</div>
+            <h3>{okOblig} de {oblig.length} entregados</h3>
+          </div>
+          <span style={{ fontFamily:"'Poppins',sans-serif", fontWeight:700, fontSize:28, letterSpacing:'-.04em', color: pct===100 ? '#00208F' : '#0B1233' }}>{pct} %</span>
+        </div>
+        <div style={{ height:10, background:'#F0EFEA', borderRadius:'8px 8px 8px 0', marginBottom:8 }}>
+          <div style={{ height:'100%', width:`${pct}%`, background: pct===100 ? '#00208F' : '#FFB81C', borderRadius:'8px 8px 8px 0', transition:'width .3s' }} />
+        </div>
+        {DOCS_OBLIGATORIOS.map(d => <Fila key={d.id} d={d} />)}
       </div>
 
-      {docs.length === 0 && (
-        <div style={{ textAlign:'center', padding:'50px 0', background:'#F6F5F1', borderRadius:"20px 20px 20px 0", border:'2px dashed #C9CBD3', color:'#8A8FA3' }}>
-          <div style={{ fontSize:40, marginBottom:8 }}>📄</div>
-          <p style={{ fontSize:13 }}>No hay documentos.</p>
-        </div>
-      )}
+      <div className="card" style={{ padding:24, marginBottom:16 }}>
+        <div className="eyebrow">Según el caso</div>
+        <p style={{ fontSize:13, color:'#5B6178', marginBottom:6 }}>Solo si aplican a este inmueble.</p>
+        {DOCS_ESPECIALES.map(d => <Fila key={d.id} d={d} />)}
+      </div>
 
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {docs.map(doc => (
-          <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background:'white', borderRadius:"14px 14px 14px 0", border:'1.5px solid #E4E2DA' }}>
-            <span style={{ fontSize:22, flexShrink:0 }}>📄</span>
+      <div className="card" style={{ padding:24 }}>
+        <div style={{ display:'flex', gap:10, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', marginBottom:8 }}>
+          <div className="eyebrow" style={{ marginBottom:0 }}>Otros documentos</div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <select className="fi" value={docTipo} onChange={e => setDocTipo(e.target.value)} style={{ width:'auto', fontSize:13, padding:'6px 10px' }}>
+              {DOC_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+              <span className="btn-p" style={{ display:'inline-block', padding:'7px 14px', fontSize:12, pointerEvents:'none' }}>{uploading && !DOC_TIPOS.slice(0,-1).includes(uploading) ? 'Subiendo…' : '+ Subir PDF'}</span>
+              <input type="file" accept=".pdf,application/pdf" style={{ display:'none' }} onChange={handleUpload} disabled={!!uploading} />
+            </label>
+          </div>
+        </div>
+        {otros.length === 0 && <p style={{ fontSize:13, color:'#8A8FA3', paddingTop:8 }}>Sin otros documentos.</p>}
+        {otros.map(doc => (
+          <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop:'1px solid #E4E2DA' }}>
             <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:13, fontWeight:700, color:'#0B1233', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.nombre}</p>
-              <p style={{ fontSize:11, color:'#8A8FA3' }}>
-                {doc.tipo}{doc.size ? ` · ${(doc.size/1024).toFixed(0)} KB` : ''} · {new Date(doc.created_at).toLocaleDateString('es-ES')}
-              </p>
+              <p style={{ fontSize:14, fontWeight:500, color:'#0B1233', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.nombre}</p>
+              <p className="mono" style={{ fontSize:10, color:'#8A8FA3' }}>{doc.tipo}{doc.size ? ` · ${(doc.size/1024).toFixed(0)} KB` : ''} · {new Date(doc.created_at).toLocaleDateString('es-ES')}</p>
             </div>
-            <button onClick={() => handleDownload(doc)}
-              style={{ padding:'6px 12px', borderRadius:"14px 14px 14px 0", border:`1.5px solid ${BRAND}`, background:'transparent', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-              Descargar
-            </button>
-            <button onClick={() => handleDelete(doc)}
-              style={{ padding:'6px 10px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-              ✕
-            </button>
+            <button className="btn-g" style={{ padding:'5px 12px', fontSize:12 }} onClick={() => handleDownload(doc)}>Descargar</button>
+            <button onClick={() => handleDelete(doc)} style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer' }}>✕</button>
           </div>
         ))}
       </div>

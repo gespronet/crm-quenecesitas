@@ -427,9 +427,10 @@ export default function App() {
       if (error) { console.error('[saveTask]', error); alert(`Error al guardar tarea:\n${error.message}`); return; }
       if (rec) setData(d => ({ ...d, tasks: [...d.tasks, toCamel(rec)] }));
     } else {
-      const { error } = await supabase.from('tasks').update(toSnake(form)).eq('id', form.id);
+      const { checklist, ...rest } = form; // la lista se guarda aparte al marcar cada punto
+      const { error } = await supabase.from('tasks').update(toSnake(rest)).eq('id', form.id);
       if (error) { console.error('[saveTask update]', error); alert(`Error al actualizar tarea:\n${error.message}`); return; }
-      setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === form.id ? form : t) }));
+      setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === form.id ? { ...t, ...rest } : t) }));
     }
   };
   const deleteTask = async (id) => {
@@ -450,6 +451,15 @@ export default function App() {
       // Sincronizar Mi Semana: task.id === block.id (mismo UUID), UPDATE hace 0 filas si no existe
       await supabase.from('weekly_plans').update({ completado: newVal }).eq('id', id);
     }
+  };
+
+  const toggleChecklistItem = async (taskId, itemId) => {
+    const task = data.tasks.find(t => t.id === taskId);
+    if (!task || !Array.isArray(task.checklist)) return;
+    const checklist = task.checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i);
+    const { data: rec, error } = await supabase.from('tasks').update({ checklist }).eq('id', taskId).select().single();
+    if (error) { alert(`Error al actualizar:\n${error.message}`); return; }
+    setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === taskId ? toCamel(rec) : t) }));
   };
 
   // ── Users ─────────────────────────────────────────────────────────────────
@@ -599,7 +609,7 @@ export default function App() {
             onSaveTask={saveTask}
             onDeleteTask={deleteTask}
             onToggleTask={toggleTask}
-          />}
+           onToggleItem={toggleChecklistItem}/>}
           {view==="productos" && null}
           {view==="subastas" && null}
           {view==="inmobiliaria" && <Inmobiliaria user={user} contacts={data.contacts} users={data.users} />}
@@ -1651,7 +1661,26 @@ function TaskPrioridadBadge({prioridad}) {
   return <span className="tag" style={{background:bg,color:c,fontSize:10}}>{prioridad}</span>;
 }
 
-function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask}) {
+function ChecklistProgreso({task}) {
+  if (!Array.isArray(task.checklist) || !task.checklist.length) return null;
+  const n = task.checklist.filter(i => i.done).length, t = task.checklist.length;
+  return <span className="tag" style={{background:n===t?"#00208F":"#FFE7A8",color:n===t?"white":"#0B1233",fontSize:10}}>☑ {n}/{t}</span>;
+}
+function ChecklistLista({task,onToggle}) {
+  if (!Array.isArray(task.checklist) || !task.checklist.length) return null;
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:2,marginTop:8}}>
+      {task.checklist.map(i => (
+        <label key={i.id} style={{display:"flex",gap:9,alignItems:"flex-start",fontSize:13,color:i.done?"#8A8FA3":"#0B1233",cursor:"pointer",padding:"5px 0",borderTop:"1px solid #E4E2DA"}}>
+          <input type="checkbox" checked={!!i.done} onChange={()=>onToggle(task.id,i.id)} style={{marginTop:2,accentColor:"#00208F",width:15,height:15,flexShrink:0}} />
+          <span style={{textDecoration:i.done?"line-through":"none"}}>{i.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask,onToggleItem}) {
   const [vistaTask,setVistaTask]=useState("hoy");
   const [weekOffset,setWeekOffset]=useState(0);
   const [filter,setFilter]=useState("semana");
@@ -1694,7 +1723,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
   const TaskRowHoy=({task})=>{
     const contact=contacts.find(c=>c.id===task.contactId);
     return (
-      <div className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:11,opacity:task.completada?.6:1,marginBottom:7}}>
+      <div className="card" style={{padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:11,opacity:task.completada?.6:1,marginBottom:7}}>
         <input type="checkbox" checked={task.completada} onChange={()=>toggleDone(task.id)} style={{width:16,height:16,cursor:"pointer",accentColor:BRAND,flexShrink:0}} />
         <div style={{flex:1,minWidth:0}}>
           <p style={{fontSize:13,fontWeight:600,color:"#0B1233",textDecoration:task.completada?"line-through":"none"}}>{task.titulo}</p>
@@ -1702,7 +1731,13 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
             {task.hora&&<span style={{fontSize:10,color:"#5B6178"}}>🕒 {task.hora.slice(0,5)}</span>}
             {contact&&<span style={{fontSize:10,color:"#8A8FA3"}}>👤 {contact.name}</span>}
             <TaskLineaBadge linea={task.linea} />
+            <ChecklistProgreso task={task} />
           </div>
+          {Array.isArray(task.checklist)&&task.checklist.length>0&&(
+            <details style={{marginTop:4}}><summary style={{fontSize:12,color:"#00208F",cursor:"pointer"}}>Ver lista</summary>
+              <ChecklistLista task={task} onToggle={onToggleItem} />
+            </details>
+          )}
         </div>
         <button className="btn-g" style={{padding:"3px 8px",fontSize:11,flexShrink:0}} onClick={()=>openEdit(task)}>✏️</button>
       </div>
@@ -1783,6 +1818,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
                   <span style={{fontSize:10,color:ov?"#dc2626":tw?"#d97706":"#8A8FA3",fontWeight:ov||tw?700:400}}>📅 {task.fecha}{ov?" ⚠️":tw?" 📌":""}</span>
                   {task.hora&&<span style={{fontSize:10,color:"#5B6178"}}>🕒 {task.hora.slice(0,5)}</span>}
                   {deal&&<span style={{fontSize:10,color:"#8A8FA3"}}>📋 {deal.titulo}</span>}
+                  <ChecklistProgreso task={task} />
                   {contact&&<span style={{fontSize:10,color:"#8A8FA3"}}>👤 {contact.name}</span>}
                 </div>
               </div>
@@ -1885,6 +1921,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
                         {t.hora&&<div className="mono" style={{fontSize:10,color:"#5B6178"}}>{t.hora.slice(0,5)}</div>}
                         <div style={{fontSize:12.5,fontWeight:500,color:"#0B1233",lineHeight:1.3,textDecoration:t.completada?"line-through":"none",wordBreak:"break-word"}}>{t.titulo}</div>
                         {c&&<div style={{fontSize:11,color:"#5B6178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>}
+                        <div style={{marginTop:3}}><ChecklistProgreso task={t} /></div>
                       </div>
                     </div>
                   </div>);})}
@@ -1922,6 +1959,12 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="mo">
             <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:16}}>{modal==="new"?"Nueva tarea":"Editar tarea"}</h2>
+            {modal!=="new"&&form.notas&&<p style={{fontSize:13,color:"#3A4058",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:"10px 12px",marginBottom:14}}>{form.notas}</p>}
+            {modal!=="new"&&Array.isArray(form.checklist)&&form.checklist.length>0&&(()=>{const live=tasks.find(t=>t.id===form.id)||form;return(
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><label className="fl" style={{marginBottom:0}}>Lista de comprobación</label><ChecklistProgreso task={live} /></div>
+                <ChecklistLista task={live} onToggle={onToggleItem} />
+              </div>);})()}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
               <div style={{gridColumn:"1 / -1"}}><label className="fl">Título *</label><input className="fi" value={form.titulo||""} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))} /></div>
               <div><label className="fl">Fecha</label><input className="fi" type="date" value={form.fecha||today()} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))} /></div>
