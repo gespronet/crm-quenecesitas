@@ -62,7 +62,7 @@ function fmtFechaLarga(iso) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ export default function EnergiaSection({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>⚡ Energía</h1>
+          <><div className="eyebrow">Línea de negocio</div><h1>Energía</h1></>
           <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} suministros</p>
         </div>
         <button className="btn-p" onClick={() => setSelectedId('new')}>+ Nuevo suministro</button>
@@ -158,8 +158,8 @@ export default function EnergiaSection({ user, users, contacts }) {
           { l:'Próximas renovaciones', v:proximasRenovaciones, i:'⚠️', c:'#d97706' },
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
-            <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+            
+            <div style={{ fontSize:34, fontWeight:700, letterSpacing:"-.04em", color:"#0B1233", fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
             <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
           </div>
         ))}
@@ -233,7 +233,7 @@ export default function EnergiaSection({ user, users, contacts }) {
                           <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setSelectedId(p.id)}>📂 Abrir</button>
                           {admin && (
                             <button onClick={() => quickDelete(p)}
-                              style={{ padding:'5px 9px', borderRadius:7, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                              style={{ padding:'5px 9px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
                               🗑
                             </button>
                           )}
@@ -281,7 +281,7 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
     <div>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onBack}
-          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1, minWidth:200 }}>
@@ -291,7 +291,7 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
           {proc && (
             <p style={{ fontSize:12, color:'#8A8FA3' }}>
               {proc.comercializadora_actual || 'Sin comercializadora actual'}
-              {estado && <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>}
+              {estado && <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:"20px 20px 20px 0", fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>}
             </p>
           )}
         </div>
@@ -481,7 +481,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
                 if (!nuevasTarifas.includes(form.tarifa_actual)) set('tarifa_actual', nuevasTarifas[0]);
               }}
               style={{
-                padding:'14px 28px', borderRadius:10, fontSize:15, fontWeight:800, cursor: canEdit ? 'pointer' : 'default',
+                padding:'14px 28px', borderRadius:"14px 14px 14px 0", fontSize:15, fontWeight:800, cursor: canEdit ? 'pointer' : 'default',
                 border: form.tipo_suministro === opt.v ? `2px solid ${BRAND}` : '1.5px solid #C9CBD3',
                 background: form.tipo_suministro === opt.v ? '#eef1fb' : 'white',
                 color: form.tipo_suministro === opt.v ? BRAND : '#3A4058',
@@ -496,7 +496,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         <div style={{ position:'relative' }}>
           <FL>Cliente</FL>
           {selCon ? (
-            <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, maxWidth:400 }}>
+            <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", maxWidth:400 }}>
               <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
               <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
             </div>
@@ -504,7 +504,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
             <div style={{ maxWidth:400 }}>
               <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
               {filtCon.length > 0 && (
-                <div style={{ position:'absolute', top:'100%', left:0, right:0, maxWidth:400, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, maxWidth:400, background:'white', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                   {filtCon.map(c => (
                     <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
                       style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
@@ -542,7 +542,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
         <div style={{ marginTop:12 }}>
           <FL>Notas generales</FL>
           <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
       </Sec>
 
@@ -569,7 +569,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
                 {deleting ? 'Eliminando...' : '🗑 Eliminar suministro'}
               </button>
             )}
@@ -579,7 +579,7 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
               <button className="btn-g" onClick={() => handleSave()} disabled={saving}>{saving ? 'Guardando...' : (isNew ? '💾 Crear suministro' : '💾 Guardar')}</button>
               {puedeEnviarEstudio && (
                 <button onClick={handleEnviarEstudio} disabled={sending}
-                  style={{ padding:'9px 16px', borderRadius:8, border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor: sending ? 'not-allowed' : 'pointer' }}>
+                  style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor: sending ? 'not-allowed' : 'pointer' }}>
                   {sending ? 'Enviando...' : '📤 Enviar a estudio'}
                 </button>
               )}
@@ -804,7 +804,7 @@ function TabSeguimiento({ proceso, canEdit, onSaved }) {
         <div style={{ marginTop:12 }}>
           <FL>Notas de seguimiento</FL>
           <textarea value={form.notas} disabled={!canEdit} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
         {canEdit && (
           <div style={{ display:'flex', gap:8, marginTop:16, paddingTop:16, borderTop:'1px solid #E4E2DA', flexWrap:'wrap' }}>

@@ -166,6 +166,7 @@ const CSS = `
   .tab:not(.on){background:white;color:#3A4058;box-shadow:inset 0 0 0 1.5px #E4E2DA;}
   .ii{border-left:3px solid #00208F;padding:12px 16px;border-radius:0 14px 14px 0;margin-bottom:8px;background:white;}
   .sc{background:white;border-radius:20px 20px 20px 0;padding:20px;border:1px solid #E4E2DA;border-left-width:1px!important;border-left-color:#E4E2DA!important;}
+  .sc > div:last-child{font-family:"JetBrains Mono",monospace;font-size:10.5px!important;text-transform:uppercase;letter-spacing:.08em;color:#5B6178!important;margin-top:6px!important;}
   .sc:first-child{background:#00208F;border-color:#00208F!important;}
   .sc:first-child *{color:white!important;}
   .topbar{display:flex;align-items:center;gap:16px;padding:18px 40px;border-bottom:1px solid #E4E2DA;background:#F6F5F1;position:sticky;top:0;z-index:50;}
@@ -214,6 +215,8 @@ const CSS = `
 
     /* Dashboard métricas: 2×2 */
     .stats-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
+    .dash-grid{grid-template-columns:1fr!important;}
+    .week-grid{grid-template-columns:1fr!important;}
 
     /* Pipeline kanban → selector de columna */
     .kanban-mob-sel{display:flex!important;}
@@ -266,7 +269,7 @@ function LoadingScreen() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#00208F",fontFamily:"'DM Sans',sans-serif"}}>
       <style>{CSS}</style>
       <div style={{textAlign:"center",color:"white"}}>
-        <img src={logo} style={{width:80,height:80,borderRadius:20,objectFit:"cover",marginBottom:20}} alt="logo" />
+        <img src={logo} style={{width:80,height:80,borderRadius:"20px 20px 20px 0",objectFit:"cover",marginBottom:20}} alt="logo" />
         <div style={{fontFamily:"'Poppins',sans-serif",fontSize:28,fontWeight:800,letterSpacing:"1px",marginBottom:12}}>queNECESITAS CRM</div>
         <p style={{fontSize:14,opacity:.7}}>Cargando datos...</p>
       </div>
@@ -481,7 +484,8 @@ export default function App() {
 
   const canSee = l => ["admin","socio"].includes(user.role) || user.lineaPermisos?.includes(l);
   const vis = (user.role==="admin"||user.role==="socio") ? data.users.map(u=>u.id) : [user.id];
-  const myCon = data.contacts.filter(c=>vis.includes(c.comercialId)&&parseLinea(c.linea).some(l=>canSee(l)));
+  const isBoss = ["admin","socio"].includes(user.role);
+  const myCon = data.contacts.filter(c=>(isBoss||vis.includes(c.comercialId))&&parseLinea(c.linea).some(l=>canSee(l)));
   const myDea = data.deals.filter(d=>vis.includes(d.comercialId)&&canSee(d.linea));
   const myTas = data.tasks.filter(t=>vis.includes(t.comercialId));
 
@@ -549,7 +553,7 @@ export default function App() {
         <div className="mob-header">
           <button onClick={()=>setMenuOpen(m=>!m)} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"white",padding:"4px",lineHeight:1,flexShrink:0}}>☰</button>
           <span style={{fontFamily:"'Poppins',sans-serif",fontWeight:700,fontSize:17,color:"white",flex:1,letterSpacing:"-.03em"}}>{currentNavLabel}</span>
-          <div style={{width:32,height:32,background:BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:BRAND,fontSize:13}}>{user.name.charAt(0)}</div>
+          <div style={{width:32,height:32,background:"#FFB81C",borderRadius:"50% 50% 50% 0",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#0B1233",fontSize:13}}>{user.name.charAt(0)}</div>
         </div>
 
         <div className="topbar desk-hamburger">
@@ -560,7 +564,7 @@ export default function App() {
           <button className="btn-a" onClick={()=>navigate("contacts")}>+ Nuevo</button>
         </div>
         <div className="crm-main-inner" style={{padding:"32px 40px"}}>
-          {view==="dashboard" && <Dashboard contacts={myCon} deals={myDea} tasks={myTas} user={user} />}
+          {view==="dashboard" && <Dashboard contacts={myCon} deals={myDea} tasks={myTas} user={user} onNavigate={navigate} />}
           {(view==="contacts"||view==="clients") && <Contacts
             contacts={myCon}
             interactions={data.interactions}
@@ -656,63 +660,97 @@ function Login({users,onLogin}) {
   );
 }
 
-function Dashboard({contacts,deals,tasks,user}) {
+function Dashboard({contacts,deals,tasks,user,onNavigate}) {
   const canSee = l => ["admin","socio"].includes(user.role) || (user.lineaPermisos||[]).includes(l);
   const {start,end}=weekRange();
+  const today=new Date().toISOString().slice(0,10);
   const weekT=tasks.filter(t=>!t.completada&&t.fecha>=start&&t.fecha<=end);
-  const total=deals.filter(d=>d.etapa!=="perdido").reduce((s,d)=>s+(d.valor||0),0);
-  const byL=Object.keys(LINEAS).filter(canSee).map(l=>({l,count:deals.filter(d=>d.linea===l&&d.etapa!=="perdido").length,val:deals.filter(d=>d.linea===l&&d.etapa!=="perdido").reduce((s,d)=>s+(d.valor||0),0)}));
-  const pending=tasks.filter(t=>!t.completada);
+  const activeDeals=deals.filter(d=>d.etapa!=="perdido");
+  const total=activeDeals.reduce((s,d)=>s+(d.valor||0),0);
+  const byL=Object.keys(LINEAS).filter(canSee).map(l=>({l,count:activeDeals.filter(d=>d.linea===l).length,val:activeDeals.filter(d=>d.linea===l).reduce((s,d)=>s+(d.valor||0),0)}));
+  const maxCount=Math.max(1,...byL.map(x=>x.count));
+  const pending=tasks.filter(t=>!t.completada).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||""));
+  const todayT=pending.filter(t=>t.fecha<=today);
+  const list=(todayT.length?todayT:pending).slice(0,6);
+  const prospectos=contacts.filter(c=>c.tipo==="prospecto").length;
+  const clientes=contacts.filter(c=>c.tipo==="cliente").length;
+  const nuevos30=contacts.filter(c=>(c.createdAt||"")>=new Date(Date.now()-30*864e5).toISOString().slice(0,10)).length;
+  const [ahorro,setAhorro]=useState(null);
+  useEffect(()=>{ if(!canSee("energia")) return;
+    supabase.from("energia_procesos").select("ahorro_real_eur").then(({data})=>{
+      if(data) setAhorro(data.reduce((s,r)=>s+(Number(r.ahorro_real_eur)||0),0));
+    });
+  // eslint-disable-next-line
+  },[]);
+  const prio={alta:{l:"Alta",bg:"#FFB81C",c:"#0B1233"},media:{l:"Media",bg:"#DCE3FF",c:"#00208F"},baja:{l:"Baja",bg:"#F0EFEA",c:"#5B6178"}};
+  const eur=v=>Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,".")+" €";
+  const kpis=[
+    {l:"Contactos activos",v:contacts.length,s:`${prospectos} prospectos · ${clientes} clientes`,go:"contacts"},
+    {l:"Pipeline activo",v:eur(total),s:`${activeDeals.length} oportunidades`,go:"pipeline"},
+    {l:"Tareas esta semana",v:weekT.length,s:`${todayT.length} para hoy o vencidas`,go:"tasks"},
+    {l:"Nuevos · 30 días",v:nuevos30,s:"contactos captados",go:"contacts"},
+  ];
+  const nombre=(user.name||"").split(" ")[0];
   return (
     <div>
-      <div style={{marginBottom:20}}>
-        <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:28,fontWeight:800,color:BRAND}}>Dashboard</h1>
-        <p style={{color:"#8A8FA3",fontSize:13}}>Bienvenido, {user.name} · {new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}</p>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16,flexWrap:"wrap",marginBottom:28}}>
+        <div>
+          <div className="eyebrow">Panel · {new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}</div>
+          <h1>Buenos días, {nombre}</h1>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button className="btn-g" onClick={()=>onNavigate&&onNavigate("tasks")}>Ver tareas</button>
+          <button className="btn-p" onClick={()=>onNavigate&&onNavigate("contacts")}>+ Nuevo contacto</button>
+        </div>
       </div>
-      <div className="stats-grid">
-        {[
-          {l:"Prospectos",v:contacts.filter(c=>c.tipo==="prospecto").length,i:"👥",c:BRAND},
-          {l:"Clientes",v:contacts.filter(c=>c.tipo==="cliente").length,i:"🌟",c:"#059669"},
-          {l:"Pipeline activo",v:"€"+total.toLocaleString("es-ES"),i:"💰",c:"#d97706"},
-          {l:"Tareas esta semana",v:weekT.length,i:"📅",c:weekT.length>0?"#dc2626":"#5B6178"},
-        ].map(s=>(
-          <div key={s.l} className="sc" style={{borderLeftColor:s.c}}>
-            <div style={{fontSize:24,marginBottom:6}}>{s.i}</div>
-            <div style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"'Poppins',sans-serif"}}>{s.v}</div>
-            <div style={{fontSize:11,color:"#8A8FA3",marginTop:2}}>{s.l}</div>
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16,marginBottom:24}}>
+        {kpis.map((k,i)=>(
+          <div key={k.l} onClick={()=>onNavigate&&onNavigate(k.go)} style={{cursor:"pointer",padding:24,borderRadius:"24px 24px 24px 0",background:i===0?"#00208F":"white",border:i===0?"1px solid #00208F":"1px solid #E4E2DA",color:i===0?"white":"#0B1233",transition:"border-color .15s"}}>
+            <div className="mono" style={{fontSize:10.5,letterSpacing:".08em",textTransform:"uppercase",color:i===0?"#8FA2F0":"#5B6178"}}>{k.l}</div>
+            <div style={{fontFamily:"'Poppins',sans-serif",fontWeight:700,fontSize:36,letterSpacing:"-.04em",lineHeight:1.1,margin:"14px 0 6px"}}>{k.v}</div>
+            <div style={{fontSize:13,color:i===0?"#DCE3FF":"#5B6178"}}>{k.s}</div>
           </div>
         ))}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-        <div className="card" style={{padding:20}}>
-          <h3 style={{fontSize:13,fontWeight:800,color:BRAND,marginBottom:14,textTransform:"uppercase",letterSpacing:".5px"}}>Pipeline por línea</h3>
-          {byL.map(item=>(
-            <div key={item.l} style={{marginBottom:11}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <span style={{fontSize:12,fontWeight:600,color:"#3A4058"}}>{LINEAS[item.l].label}</span>
-                <span style={{fontSize:11,color:"#5B6178"}}>{item.count} · €{item.val.toLocaleString("es-ES")}</span>
-              </div>
-              <div style={{height:6,background:"#F6F5F1",borderRadius:4}}>
-                <div style={{height:"100%",width:`${Math.min(100,(item.val/(total||1))*100)}%`,background:LINEAS[item.l].color,borderRadius:4,transition:"width .5s"}} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="card" style={{padding:20}}>
-          <h3 style={{fontSize:13,fontWeight:800,color:BRAND,marginBottom:14,textTransform:"uppercase",letterSpacing:".5px"}}>
-            Tareas semana {start} → {end}
-            {weekT.length>0&&<span style={{background:"#fee2e2",color:"#dc2626",fontSize:11,padding:"1px 7px",borderRadius:20,marginLeft:8}}>{weekT.length}</span>}
-          </h3>
-          {pending.slice(0,5).map(t=>(
-            <div key={t.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:9,padding:"8px 10px",background:t.fecha>=start&&t.fecha<=end?"#fffbeb":"#F6F5F1",borderRadius:8}}>
-              <span>{t.prioridad==="alta"?"🔴":t.prioridad==="media"?"🟡":"🟢"}</span>
+      <div className="dash-grid" style={{display:"grid",gridTemplateColumns:"minmax(0,1.4fr) minmax(0,1fr)",gap:16}}>
+        <div className="card" style={{padding:24}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3>{todayT.length?"Tareas de hoy":"Próximas tareas"}</h3>
+            <button className="btn-g" style={{padding:"5px 12px",fontSize:12}} onClick={()=>onNavigate&&onNavigate("tasks")}>Ver todas</button>
+          </div>
+          {list.map(t=>{const p=prio[t.prioridad]||prio.baja; const late=t.fecha<today; return (
+            <div key={t.id} style={{display:"flex",gap:14,alignItems:"center",padding:"12px 0",borderTop:"1px solid #E4E2DA"}}>
+              <span className="mono" style={{fontSize:11,color:late?"#dc2626":"#5B6178",width:62,flexShrink:0}}>{t.hora||(t.fecha===today?"HOY":(t.fecha||"").slice(5).split("-").reverse().join("/"))}</span>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:12,fontWeight:600,color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.titulo}</p>
-                <p style={{fontSize:11,color:"#8A8FA3"}}>{t.fecha}</p>
+                <p style={{fontSize:14,fontWeight:500,color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.titulo}</p>
+                {(()=>{const c=contacts.find(c=>c.id===t.contactId);return c?<p style={{fontSize:12,color:"#5B6178"}}>{c.name}</p>:null;})()}
               </div>
+              <span className="tag" style={{background:p.bg,color:p.c}}>{p.l}</span>
+            </div>);})}
+          {list.length===0&&<p style={{color:"#5B6178",fontSize:14,padding:"20px 0",borderTop:"1px solid #E4E2DA"}}>Sin tareas pendientes.</p>}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div className="card" style={{padding:24}}>
+            <h3 style={{marginBottom:18}}>Pipeline por línea</h3>
+            {byL.map(item=>(
+              <div key={item.l} style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:13}}>
+                  <span style={{fontWeight:500,color:"#0B1233"}}>{LINEAS[item.l].label.replace(/^\S+\s/,"")}</span>
+                  <span className="mono" style={{fontSize:11,color:"#5B6178"}}>{item.count} · {eur(item.val)}</span>
+                </div>
+                <div style={{height:10,background:"#F0EFEA",borderRadius:"8px 8px 8px 0"}}>
+                  <div style={{height:"100%",width:`${item.count?Math.max(4,(item.count/maxCount)*100):0}%`,background:"#00208F",borderRadius:"8px 8px 8px 0",transition:"width .5s"}} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {canSee("energia")&&(
+            <div style={{background:"#FFB81C",color:"#0B1233",borderRadius:"24px 24px 24px 0",padding:24}}>
+              <div className="mono" style={{fontSize:10.5,letterSpacing:".08em",textTransform:"uppercase"}}>Ahorro energético generado</div>
+              <div style={{fontFamily:"'Poppins',sans-serif",fontWeight:700,fontSize:40,letterSpacing:"-.04em",lineHeight:1.1,margin:"12px 0 6px"}}>{ahorro===null?"—":eur(ahorro)}</div>
+              <div style={{fontSize:13}}>Ahorro real acumulado de los clientes de energía.</div>
             </div>
-          ))}
-          {pending.length===0&&<p style={{color:"#8A8FA3",fontSize:13,textAlign:"center",padding:"16px 0"}}>¡Sin tareas pendientes! 🎉</p>}
+          )}
         </div>
       </div>
     </div>
@@ -720,8 +758,8 @@ function Dashboard({contacts,deals,tasks,user}) {
 }
 
 const TIPOS = {
-  prospecto: { label:"Prospecto", color:"#b45309", bg:"#fef3c7" },
-  cliente:   { label:"Cliente",   color:"#047857", bg:"#d1fae5" },
+  prospecto: { label:"Prospecto", color:"#0B1233", bg:"#FFE7A8" },
+  cliente:   { label:"Cliente",   color:"#00208F", bg:"#DCE3FF" },
 };
 function TipoBadge({tipo}) {
   const t = TIPOS[tipo==="cliente"?"cliente":"prospecto"];
@@ -757,14 +795,14 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>👥 Contactos</h1>
+          <><div className="eyebrow">Prospectos y clientes</div><h1>Contactos</h1></>
           <p style={{color:"#8A8FA3",fontSize:12}}>{filtered.length} de {contacts.length} contactos</p>
         </div>
         <button className="btn-p" onClick={openNew}>+ Nuevo contacto</button>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
         {[["all","Todos"],["prospecto","Prospectos"],["cliente","Clientes"]].map(([k,l])=>(
-          <button key={k} type="button" onClick={()=>setFTipo(k)} style={{padding:"7px 14px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:fTipo===k?BRAND:"#C9CBD3",background:fTipo===k?BRAND:"white",color:fTipo===k?"white":"#5B6178"}}>
+          <button key={k} type="button" onClick={()=>setFTipo(k)} style={{padding:"8px 16px",borderRadius:"14px 14px 14px 0",border:"1.5px solid",fontSize:13,fontWeight:700,cursor:"pointer",borderColor:fTipo===k?"#0B1233":"#E4E2DA",background:fTipo===k?"#0B1233":"white",color:fTipo===k?"white":"#3A4058"}}>
             {l} <span style={{opacity:.75,fontWeight:600}}>{porTipo[k]}</span>
           </button>
         ))}
@@ -794,7 +832,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                 <tr key={c.id} className="tr" style={{borderTop:"1px solid #F6F5F1"}}>
                   <td style={{padding:"9px 13px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:9}}>
-                      <div style={{width:32,height:32,background:ln0.light||BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:ln0.color||BRAND,fontSize:12,flexShrink:0}}>{c.name.charAt(0)}</div>
+                      <div style={{width:32,height:32,background:"#DCE3FF",borderRadius:"50% 50% 50% 0",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#00208F",fontSize:12,flexShrink:0}}>{c.name.charAt(0)}</div>
                       <div>
                         <button onClick={()=>setDetail(c)} style={{fontSize:12,fontWeight:700,color:BRAND,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left"}}>{c.name}</button>
                         {["admin","socio"].includes(user.role)&&com&&<p style={{fontSize:10,color:"#8A8FA3",marginTop:1}}>{com.name}</p>}
@@ -835,7 +873,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
           return (
             <div key={c.id} className="card" style={{padding:"14px 16px"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                <div style={{width:42,height:42,background:ln0.light||BRAND_LIGHT,borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:ln0.color||BRAND,fontSize:16,flexShrink:0}}>{c.name.charAt(0)}</div>
+                <div style={{width:42,height:42,background:"#DCE3FF",borderRadius:"50% 50% 50% 0",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#00208F",fontSize:16,flexShrink:0}}>{c.name.charAt(0)}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <button onClick={()=>setDetail(c)} style={{fontSize:15,fontWeight:800,color:BRAND,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{c.name}</button>
                   {c.empresa&&<p style={{fontSize:11,color:"#5B6178",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.empresa}</p>}
@@ -853,7 +891,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button className="btn-p" style={{flex:1,minWidth:100,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>setDetail(c)}>📋 Ver ficha</button>
-                <button className="btn-g" style={{flex:1,minWidth:80,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>openEdit(c)}>✏️ Editar</button>
+                <button className="btn-g" style={{flex:1,minWidth:80,justifyContent:"center",display:"flex",alignItems:"center",gap:5,fontSize:13,padding:"10px 12px"}} onClick={()=>openEdit(c)}>Editar</button>
                 {c.tipo!=="cliente"&&<button className="btn-g" style={{fontSize:12,color:"#059669",borderColor:"#a7f3d0",padding:"10px 12px"}} onClick={()=>toClient(c)}>→ Cliente</button>}
                 <button className="btn-g" style={{fontSize:12,color:"#dc2626",borderColor:"#fecaca",padding:"10px 12px"}} onClick={()=>del(c.id)}>🗑️</button>
               </div>
@@ -886,7 +924,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                 <div style={{display:"flex",gap:7,marginTop:4}}>
                   {[["prospecto","Prospecto"],["cliente","Cliente"]].map(([k,l])=>{
                     const sel=(form.tipo||"prospecto")===k;
-                    return <button key={k} type="button" onClick={()=>setForm(f=>({...f,tipo:k}))} style={{padding:"5px 14px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?TIPOS[k].color:"#C9CBD3",background:sel?TIPOS[k].bg:"white",color:sel?TIPOS[k].color:"#5B6178"}}>{l}</button>;
+                    return <button key={k} type="button" onClick={()=>setForm(f=>({...f,tipo:k}))} style={{padding:"5px 14px",borderRadius:"20px 20px 20px 0",border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?TIPOS[k].color:"#C9CBD3",background:sel?TIPOS[k].bg:"white",color:sel?TIPOS[k].color:"#5B6178"}}>{l}</button>;
                   })}
                 </div>
               </div>
@@ -905,7 +943,7 @@ function Contacts({contacts,interactions,users,deals,user,onSaveContact,onDelete
                   {Object.entries(LINEAS).filter(([k])=>canSee(k)).map(([k,v])=>{
                     const sel=(Array.isArray(form.linea)?form.linea:[]).includes(k);
                     return (
-                      <button key={k} type="button" onClick={()=>setForm(f=>{const cur=Array.isArray(f.linea)?f.linea:[];return {...f,linea:sel?cur.filter(x=>x!==k):[...cur,k]};})} style={{padding:"5px 12px",borderRadius:20,border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?v.color:"#C9CBD3",background:sel?v.light:"white",color:sel?v.color:"#5B6178",transition:"all .2s"}}>{v.label}</button>
+                      <button key={k} type="button" onClick={()=>setForm(f=>{const cur=Array.isArray(f.linea)?f.linea:[];return {...f,linea:sel?cur.filter(x=>x!==k):[...cur,k]};})} style={{padding:"5px 12px",borderRadius:"20px 20px 20px 0",border:"2px solid",fontSize:12,fontWeight:700,cursor:"pointer",borderColor:sel?v.color:"#C9CBD3",background:sel?v.light:"white",color:sel?v.color:"#5B6178",transition:"all .2s"}}>{v.label}</button>
                     );
                   })}
                 </div>
@@ -1159,36 +1197,36 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
-            <div style={{width:48,height:48,background:ln.light,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:ln.color,fontSize:20}}>{contact.name.charAt(0)}</div>
+            <div style={{width:56,height:56,background:"#00208F",borderRadius:"50% 50% 50% 0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Poppins',sans-serif",fontWeight:700,color:"white",fontSize:22,flexShrink:0}}>{contact.name.charAt(0)}</div>
             <div>
-              <h2 style={{fontSize:18,fontWeight:800,color:BRAND}}>{contact.name}</h2>
+              <div className="eyebrow" style={{marginBottom:2}}>Ficha de contacto</div><h2 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:700,letterSpacing:"-.03em",color:"#0B1233",lineHeight:1.15}}>{contact.name}</h2>
               <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
                 {contactLineas.map(l=>{const lx=LINEAS[l]||{};return <span key={l} className="tag" style={{background:lx.light,color:lx.color}}>{lx.label}</span>;})}
-                <span className="tag" style={{background:contact.tipo==="cliente"?"#d1fae5":"#eff6ff",color:contact.tipo==="cliente"?"#059669":"#2563eb"}}>{contact.tipo==="cliente"?"⭐ Cliente":"👤 Prospecto"}</span>
+                <span className="tag" style={{background:contact.tipo==="cliente"?"#00208F":"#FFB81C",color:contact.tipo==="cliente"?"white":"#0B1233"}}>{contact.tipo==="cliente"?"Cliente":"Prospecto"}</span>
                 {contact.empresa&&<span style={{fontSize:11,color:"#5B6178"}}>🏢 {contact.empresa}</span>}
               </div>
             </div>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
             {contact.tipo==="prospecto"&&onToClient&&(
-              <button className="btn-p" style={{fontSize:12,background:"#059669"}} onClick={()=>{setSelectedDealId(contactDeals[0]?.id||"");setShowConvert(true);}}>⭐ Convertir a cliente</button>
+              <button className="btn-a" style={{fontSize:13}} onClick={()=>{setSelectedDealId(contactDeals[0]?.id||"");setShowConvert(true);}}>→ Convertir a cliente</button>
             )}
             {contactLineas.includes("subastas")&&(
               <button className="btn-p" style={{fontSize:11,background:"#7c3aed",opacity:generating?0.6:1}} onClick={generateAcuerdo} disabled={generating}>{generating?"Generando...":"📄 Acuerdo confidencialidad"}</button>
             )}
-            {contact.email&&<button className="btn-g" style={{fontSize:12}} onClick={()=>{setEmailForm({asunto:"",mensaje:""});setEmailAttachments([]);setShowEmail(true);}}>✉️ Enviar email</button>}
-            <button className="btn-g" style={{fontSize:12}} onClick={onEdit}>✏️ Editar</button>
+            {contact.email&&<button className="btn-g" style={{fontSize:12}} onClick={()=>{setEmailForm({asunto:"",mensaje:""});setEmailAttachments([]);setShowEmail(true);}}>Enviar email</button>}
+            <button className="btn-g" style={{fontSize:12}} onClick={onEdit}>Editar</button>
             <button className="btn-g" style={{fontSize:12}} onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Info grid */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9,background:"#F6F5F1",borderRadius:10,padding:13,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:16,background:"#F6F5F1",borderRadius:"20px 20px 20px 0",padding:20,marginBottom:18,border:"1px solid #E4E2DA"}}>
           {infoRows.map(([k,v])=>(
-            <div key={k}><p style={{fontSize:10,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",letterSpacing:".5px"}}>{k}</p><p style={{fontSize:12,fontWeight:600,color:"#0B1233",marginTop:2}}>{v}</p></div>
+            <div key={k}><p className="mono" style={{fontSize:10,color:"#5B6178",textTransform:"uppercase",letterSpacing:".08em"}}>{k}</p><p style={{fontSize:14,fontWeight:500,color:"#0B1233",marginTop:4,wordBreak:"break-word"}}>{v}</p></div>
           ))}
         </div>
-        {contact.notas&&<div style={{background:"#fffbeb",borderRadius:8,padding:11,marginBottom:16,fontSize:12,color:"#92400e",borderLeft:"3px solid #fbbf24"}}>📝 {contact.notas}</div>}
+        {contact.notas&&<div style={{background:"#FFF4D6",borderRadius:"14px 14px 14px 0",padding:14,marginBottom:18,fontSize:14,color:"#0B1233"}}><span className="mono" style={{fontSize:10,letterSpacing:".08em",color:"#5B6178",display:"block",marginBottom:4}}>NOTAS</span>{contact.notas}</div>}
 
         {/* Tabs */}
         <div className="tabs-scroll" style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
@@ -1209,7 +1247,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
               <button className="btn-p" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setShowF(s=>!s)}>+ Nueva actuación</button>
             </div>
             {showF&&(
-              <div style={{background:"#F6F5F1",borderRadius:10,padding:14,marginBottom:14}}>
+              <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:14,marginBottom:14}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                   <div><label className="fl">Tipo</label>
                     <select className="fi" value={ni.tipo} onChange={e=>setNi(f=>({...f,tipo:e.target.value}))}>
@@ -1250,7 +1288,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
         {tab==="acciones"&&(
           <div style={{padding:"8px 0"}}>
             <p style={{fontSize:13,color:"#5B6178",marginBottom:10}}>Apunta aquí las próximas acciones con este contacto.</p>
-            <div style={{background:"#F6F5F1",borderRadius:10,padding:14}}>
+            <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:14}}>
               <p style={{fontSize:12,color:"#5B6178"}}>💡 Usa el módulo de <strong>Tareas</strong> para crear recordatorios con fecha específica vinculados a este contacto.</p>
             </div>
           </div>
@@ -1286,7 +1324,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
                   </label>
                 </div>
                 {emailAttachments.length>0&&(
-                  <div style={{background:"#F6F5F1",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:"8px 10px"}}>
                     {emailAttachments.map((f,i)=>(
                       <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<emailAttachments.length-1?"1px solid #E4E2DA":"none"}}>
                         <span style={{fontSize:14}}>📎</span>
@@ -1345,7 +1383,7 @@ function ContactDetail({contact,interactions,users,deals,user,onClose,onSaveInte
         {showConvert&&(
           <div className="mb" onClick={e=>e.target===e.currentTarget&&setShowConvert(false)}>
             <div className="mo" style={{maxWidth:420}}>
-              <h2 style={{fontSize:17,fontWeight:800,color:"#059669",marginBottom:10}}>⭐ Convertir a cliente</h2>
+              <h2 style={{fontSize:17,fontWeight:800,color:"#059669",marginBottom:10}}>→ Convertir a cliente</h2>
               <p style={{fontSize:13,color:"#3A4058",marginBottom:16}}><strong>{contact.name}</strong> pasará a ser cliente.</p>
               {contactDeals.length>0&&(
                 <div style={{marginBottom:16}}>
@@ -1421,7 +1459,7 @@ function DocumentsSection({contactId,user,refreshKey=0}) {
         </label>
       </div>
       {docs.map(doc=>(
-        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F6F5F1",borderRadius:8,marginBottom:7}}>
+        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",marginBottom:7}}>
           <span style={{fontSize:18}}>📄</span>
           <div style={{flex:1,minWidth:0}}>
             <p style={{fontSize:12,fontWeight:600,color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.nombre}</p>
@@ -1456,14 +1494,14 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Pipeline de Ventas</h1>
+          <><div className="eyebrow">Oportunidades</div><h1>Pipeline de Ventas</h1></>
           <p style={{color:"#8A8FA3",fontSize:12}}>{lDe.filter(d=>d.etapa!=="perdido").length} oportunidades activas</p>
         </div>
         <button className="btn-p" onClick={openNew}>+ Nueva oportunidad</button>
       </div>
       <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
         {lv.map(k=>(
-          <button key={k} onClick={()=>setAl(k)} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:al===k?LINEAS[k].color:"#F6F5F1",color:al===k?"white":"#5B6178",transition:"all .2s"}}>
+          <button key={k} onClick={()=>setAl(k)} style={{padding:"6px 14px",borderRadius:"20px 20px 20px 0",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:al===k?LINEAS[k].color:"#F6F5F1",color:al===k?"white":"#5B6178",transition:"all .2s"}}>
             {LINEAS[k].label} <span style={{opacity:.7}}>{deals.filter(d=>d.linea===k&&d.etapa!=="perdido").length}</span>
           </button>
         ))}
@@ -1489,7 +1527,7 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
                 <span style={{fontSize:11,fontWeight:800,color:ip?"#dc2626":BRAND,textTransform:"uppercase",letterSpacing:".5px"}}>{ETAPA_LABELS[etapa]||etapa}</span>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   {ev>0&&<span style={{fontSize:11,color:"#8A8FA3"}}>€{ev.toLocaleString("es-ES")}</span>}
-                  <span style={{background:ip?"#fee2e2":BRAND_LIGHT,color:ip?"#dc2626":BRAND,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:20}}>{ed.length}</span>
+                  <span style={{background:ip?"#fee2e2":BRAND_LIGHT,color:ip?"#dc2626":BRAND,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:"20px 20px 20px 0"}}>{ed.length}</span>
                 </div>
               </div>
               {ed.map(deal=>{
@@ -1531,7 +1569,7 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
               <div style={{marginBottom:9}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:10,fontWeight:800,color:ip?"#dc2626":BRAND,textTransform:"uppercase",letterSpacing:".5px"}}>{ETAPA_LABELS[etapa]||etapa}</span>
-                  <span style={{background:ip?"#fee2e2":BRAND_LIGHT,color:ip?"#dc2626":BRAND,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:20}}>{ed.length}</span>
+                  <span style={{background:ip?"#fee2e2":BRAND_LIGHT,color:ip?"#dc2626":BRAND,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:"20px 20px 20px 0"}}>{ed.length}</span>
                 </div>
                 {ev>0&&<p style={{fontSize:10,color:"#8A8FA3",marginTop:1}}>€{ev.toLocaleString("es-ES")}</p>}
               </div>
@@ -1613,6 +1651,7 @@ function TaskPrioridadBadge({prioridad}) {
 
 function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask}) {
   const [vistaTask,setVistaTask]=useState("hoy");
+  const [weekOffset,setWeekOffset]=useState(0);
   const [filter,setFilter]=useState("semana");
   const [fLinea,setFLinea]=useState("all");
   const [fPrioridad,setFPrioridad]=useState("all");
@@ -1769,7 +1808,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
   const vistaKanbanContent=(
     <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:10,alignItems:"flex-start"}}>
       {kanbanCols.map(col=>(
-        <div key={col.key} style={{flex:"0 0 260px",background:col.bg,borderRadius:12,padding:11,maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
+        <div key={col.key} style={{flex:"0 0 260px",background:col.bg,borderRadius:"20px 20px 20px 0",padding:11,maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9,flexShrink:0}}>
             <span style={{fontSize:12,fontWeight:800,color:BRAND}}>{col.label}</span>
             <span className="tag" style={{background:BRAND_LIGHT,color:BRAND}}>{col.items.length}</span>
@@ -1796,24 +1835,85 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask})
     </div>
   );
 
+  // ── Vista Semana ───────────────────────────────────────────────────────
+  const fmtD=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);};
+  const monday=(()=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+weekOffset*7);return d;})();
+  const weekDays=[...Array(7)].map((_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
+  const wStart=fmtD(weekDays[0]), wEnd=fmtD(weekDays[6]);
+  const prioC={alta:{bg:"#FFB81C",c:"#0B1233"},media:{bg:"#DCE3FF",c:"#00208F"},baja:{bg:"#F0EFEA",c:"#5B6178"}};
+  const overdue=weekOffset===0?tasks.filter(t=>!t.completada&&t.fecha&&t.fecha<wStart):[];
+  const vistaSemanaContent=(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+        <button className="btn-g" onClick={()=>setWeekOffset(o=>o-1)}>←</button>
+        <button className="btn-g" onClick={()=>setWeekOffset(0)} disabled={weekOffset===0} style={{opacity:weekOffset===0?.5:1}}>Esta semana</button>
+        <button className="btn-g" onClick={()=>setWeekOffset(o=>o+1)}>→</button>
+        <span className="mono" style={{fontSize:12,letterSpacing:".08em",textTransform:"uppercase",color:"#5B6178",marginLeft:6}}>
+          {weekDays[0].toLocaleDateString("es-ES",{day:"numeric",month:"short"})} – {weekDays[6].toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"numeric"})}
+        </span>
+        <span style={{flex:1}} />
+        <span style={{fontSize:13,color:"#5B6178"}}>{tasks.filter(t=>t.fecha>=wStart&&t.fecha<=wEnd&&!t.completada).length} pendientes · {tasks.filter(t=>t.fecha>=wStart&&t.fecha<=wEnd&&t.completada).length} hechas</span>
+      </div>
+      {overdue.length>0&&(
+        <div style={{background:"#FFF4D6",borderRadius:"14px 14px 14px 0",padding:"10px 14px",marginBottom:14,fontSize:13,color:"#0B1233",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <span className="mono" style={{fontSize:10.5,letterSpacing:".08em"}}>VENCIDAS · {overdue.length}</span>
+          {overdue.slice(0,4).map(t=><button key={t.id} onClick={()=>openEdit(t)} style={{background:"white",border:"1px solid #E4E2DA",borderRadius:"8px 8px 8px 0",padding:"3px 9px",fontSize:12,cursor:"pointer"}}>{t.titulo}</button>)}
+          {overdue.length>4&&<span style={{fontSize:12,color:"#5B6178"}}>+{overdue.length-4} más</span>}
+        </div>
+      )}
+      <div className="week-grid" style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(150px,1fr))",gap:10,overflowX:"auto",paddingBottom:8}}>
+        {weekDays.map(d=>{
+          const ds=fmtD(d); const isToday=ds===hoy; const wknd=d.getDay()===0||d.getDay()===6;
+          const items=tasks.filter(t=>t.fecha===ds).sort((a,b)=>(a.completada-b.completada)||String(a.hora||"99").localeCompare(String(b.hora||"99")));
+          return (
+            <div key={ds} style={{background:isToday?"#DCE3FF":wknd?"#EFEDE6":"white",border:isToday?"1.5px solid #00208F":"1px solid #E4E2DA",borderRadius:"20px 20px 20px 0",padding:12,minHeight:260,display:"flex",flexDirection:"column"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+                <div>
+                  <div className="mono" style={{fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:isToday?"#00208F":"#5B6178"}}>{d.toLocaleDateString("es-ES",{weekday:"short"})}{isToday?" · hoy":""}</div>
+                  <div style={{fontFamily:"'Poppins',sans-serif",fontWeight:700,fontSize:24,letterSpacing:"-.04em",color:"#0B1233",lineHeight:1.1}}>{d.getDate()}</div>
+                </div>
+                <button onClick={()=>openNew({fecha:ds})} title="Añadir tarea" style={{width:28,height:28,border:"none",background:isToday?"#00208F":"#F6F5F1",color:isToday?"white":"#00208F",borderRadius:"50% 50% 50% 0",cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,flex:1}}>
+                {items.map(t=>{const c=contacts.find(x=>x.id===t.contactId);const p=prioC[t.prioridad]||prioC.baja;return(
+                  <div key={t.id} onClick={()=>openEdit(t)} style={{background:"white",border:"1px solid #E4E2DA",borderLeft:`3px solid ${p.bg}`,borderRadius:"0 12px 12px 0",padding:"7px 9px",cursor:"pointer",opacity:t.completada?.55:1}}>
+                    <div style={{display:"flex",gap:6,alignItems:"flex-start"}}>
+                      <input type="checkbox" checked={!!t.completada} onClick={e=>e.stopPropagation()} onChange={()=>toggleDone(t.id)} style={{marginTop:2,accentColor:"#00208F",flexShrink:0}} />
+                      <div style={{minWidth:0}}>
+                        {t.hora&&<div className="mono" style={{fontSize:10,color:"#5B6178"}}>{t.hora.slice(0,5)}</div>}
+                        <div style={{fontSize:12.5,fontWeight:500,color:"#0B1233",lineHeight:1.3,textDecoration:t.completada?"line-through":"none",wordBreak:"break-word"}}>{t.titulo}</div>
+                        {c&&<div style={{fontSize:11,color:"#5B6178",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>}
+                      </div>
+                    </div>
+                  </div>);})}
+                {items.length===0&&<div style={{fontSize:12,color:"#8A8FA3",textAlign:"center",marginTop:20}}>—</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Tareas</h1>
+          <><div className="eyebrow">Organización</div><h1>Tareas</h1></>
           <p style={{color:"#8A8FA3",fontSize:12}}>{tasks.filter(t=>!t.completada).length} pendientes</p>
         </div>
         <button className="btn-p" onClick={()=>openNew()}>+ Nueva tarea</button>
       </div>
 
       <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
-        {[["hoy","📅 Hoy"],["lista","📋 Lista"],["kanban","🗂️ Kanban"]].map(([v,l])=>(
+        {[["hoy","Hoy"],["semana","Semana"],["lista","Lista"],["kanban","Kanban"]].map(([v,l])=>(
           <button key={v} className={`tab ${vistaTask===v?"on":""}`} onClick={()=>setVistaTask(v)}>{l}</button>
         ))}
       </div>
 
       {vistaTask==="hoy"&&vistaHoyContent}
       {vistaTask==="lista"&&vistaListaContent}
+      {vistaTask==="semana"&&vistaSemanaContent}
       {vistaTask==="kanban"&&vistaKanbanContent}
 
       {modal&&(
@@ -1876,7 +1976,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>Equipo</h1>
+          <><div className="eyebrow">Administración</div><h1>Equipo</h1></>
           <p style={{color:"#8A8FA3",fontSize:12}}>{teamTab==="interno"?`${com.length} miembros`:"Colaboradores externos sin acceso al CRM"}</p>
         </div>
         {teamTab==="interno"&&<button className="btn-p" onClick={()=>{setForm({role:"comercial",lineaPermisos:["inmobiliaria"]});setModal(true);}}>+ Añadir</button>}
@@ -1904,11 +2004,11 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
             <div key={u.id} className="card" style={{padding:18}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                 <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <div style={{width:44,height:44,background:BRAND_LIGHT,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:BRAND,fontSize:18}}>{u.name.charAt(0)}</div>
+                  <div style={{width:44,height:44,background:BRAND_LIGHT,borderRadius:"20px 20px 20px 0",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:BRAND,fontSize:18}}>{u.name.charAt(0)}</div>
                   <div>
                     <p style={{fontSize:13,fontWeight:700,color:BRAND}}>{u.name}</p>
                     <p style={{fontSize:10,color:"#8A8FA3"}}>{u.email}</p>
-                    <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",background:u.role==="socio"?"#f5f3ff":BRAND_LIGHT,color:u.role==="socio"?"#7c3aed":BRAND,padding:"2px 7px",borderRadius:20,display:"inline-block",marginTop:2}}>{u.role}</span>
+                    <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",background:u.role==="socio"?"#f5f3ff":BRAND_LIGHT,color:u.role==="socio"?"#7c3aed":BRAND,padding:"2px 7px",borderRadius:"20px 20px 20px 0",display:"inline-block",marginTop:2}}>{u.role}</span>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:4}}>
@@ -1921,13 +2021,13 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
               {subs.length>0&&<p style={{fontSize:10,color:"#8A8FA3",marginBottom:6}}>👥 Subcomerciales: {subs.map(s=>s.name).join(", ")}</p>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:10}}>
                 {[["Contactos",mc.length,"👥"],["Ops.",md.length,"📋"],["Tareas",mt.length,"✅"]].map(([l,v,i])=>(
-                  <div key={l} style={{background:"#F6F5F1",borderRadius:8,padding:8,textAlign:"center"}}>
+                  <div key={l} style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:8,textAlign:"center"}}>
                     <p style={{fontSize:16,fontWeight:800,color:BRAND}}>{v}</p>
                     <p style={{fontSize:9,color:"#8A8FA3"}}>{i} {l}</p>
                   </div>
                 ))}
               </div>
-              <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 11px",marginBottom:10}}>
+              <div style={{background:"#eff6ff",borderRadius:"14px 14px 14px 0",padding:"8px 11px",marginBottom:10}}>
                 <p style={{fontSize:10,color:"#5B6178"}}>Pipeline activo</p>
                 <p style={{fontSize:16,fontWeight:800,color:BRAND}}>€{pip.toLocaleString("es-ES")}</p>
               </div>
@@ -1955,7 +2055,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
               <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:6}}>
                 {Object.entries(LINEAS).map(([k,v])=>{
                   const has=(form.lineaPermisos||[]).includes(k);
-                  return <button key={k} onClick={()=>setForm(f=>({...f,lineaPermisos:has?(f.lineaPermisos||[]).filter(x=>x!==k):[...(f.lineaPermisos||[]),k]}))} style={{padding:"5px 12px",borderRadius:20,border:"2px solid",fontSize:11,fontWeight:700,cursor:"pointer",borderColor:has?v.color:"#C9CBD3",background:has?v.light:"white",color:has?v.color:"#5B6178",transition:"all .2s"}}>{v.label}</button>;
+                  return <button key={k} onClick={()=>setForm(f=>({...f,lineaPermisos:has?(f.lineaPermisos||[]).filter(x=>x!==k):[...(f.lineaPermisos||[]),k]}))} style={{padding:"5px 12px",borderRadius:"20px 20px 20px 0",border:"2px solid",fontSize:11,fontWeight:700,cursor:"pointer",borderColor:has?v.color:"#C9CBD3",background:has?v.light:"white",color:has?v.color:"#5B6178",transition:"all .2s"}}>{v.label}</button>;
                 })}
               </div>
             </div>
@@ -1983,7 +2083,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
               {Object.entries(LINEAS).map(([k,v])=>{
                 const has=tmpP.includes(k);
                 return (
-                  <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${has?v.color:"#C9CBD3"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#5B6178",transition:"all .2s"}}>
+                  <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:"14px 14px 14px 0",border:`1.5px solid ${has?v.color:"#C9CBD3"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#5B6178",transition:"all .2s"}}>
                     <input type="checkbox" checked={has} onChange={()=>setTmpP(p=>has?p.filter(x=>x!==k):[...p,k])} style={{width:15,height:15,accentColor:v.color,cursor:"pointer",flexShrink:0}} />
                     {v.label}
                   </label>
@@ -2134,7 +2234,7 @@ function Colaboradores() {
                   {Object.entries(LINEAS).map(([k,v])=>{
                     const has=(Array.isArray(form.lineas)?form.lineas:[]).includes(k);
                     return (
-                      <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${has?v.color:"#C9CBD3"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#5B6178",transition:"all .2s"}}>
+                      <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:"14px 14px 14px 0",border:`1.5px solid ${has?v.color:"#C9CBD3"}`,background:has?v.light:"white",cursor:"pointer",fontSize:12,fontWeight:700,color:has?v.color:"#5B6178",transition:"all .2s"}}>
                         <input type="checkbox" checked={has} onChange={()=>setForm(f=>{const cur=Array.isArray(f.lineas)?f.lineas:[];return {...f,lineas:has?cur.filter(x=>x!==k):[...cur,k]};})} style={{width:15,height:15,accentColor:v.color,cursor:"pointer",flexShrink:0}} />
                         {v.label}
                       </label>

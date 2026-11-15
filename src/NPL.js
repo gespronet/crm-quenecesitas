@@ -169,7 +169,7 @@ function parseInformeNPL(text) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ export default function NPL({ user, users }) {
   return (
     <div>
       <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>📊 NPL</h1>
+        <><div className="eyebrow">Línea de negocio</div><h1>NPL</h1></>
         <p style={{ color:'#8A8FA3', fontSize:13 }}>Inversores y carteras de deuda</p>
       </div>
 
@@ -501,7 +501,7 @@ function InvestorModal({ investor, user, users, canDelete, onClose, onSaved, onD
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
               placeholder="Notas internas sobre el inversor..."
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
@@ -509,7 +509,7 @@ function InvestorModal({ investor, user, users, canDelete, onClose, onSaved, onD
           <div>
             {!isNew && canDelete && (
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
                 {deleting ? 'Eliminando...' : '🗑 Eliminar'}
               </button>
             )}
@@ -663,14 +663,14 @@ function CarteraModal({ portfolio, onClose, onSaved, onDeleted, canDelete }) {
         <div style={{ marginTop:12, marginBottom:8 }}>
           <FL>Notas</FL>
           <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={4}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:16, borderTop:'1px solid #E4E2DA', marginTop:8 }}>
           <div>
             {!isNew && canDelete && (
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
                 {deleting ? 'Eliminando...' : '🗑 Eliminar cartera'}
               </button>
             )}
@@ -720,14 +720,14 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
     <div>
       <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onBack}
-          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1, minWidth:200 }}>
           <h2 style={{ fontSize:22, fontWeight:800, color:BRAND, fontFamily:"'Poppins',sans-serif" }}>{portfolio.nombre}</h2>
           <p style={{ fontSize:12, color:'#8A8FA3' }}>
             {portfolio.banco_origen || 'Sin banco de origen'}
-            <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>
+            <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:"20px 20px 20px 0", fontSize:11, fontWeight:700, background:estado.bg, color:estado.color }}>{estado.label}</span>
             {portfolio.fecha_limite && <span style={{ marginLeft:8 }}>· Fecha límite: {portfolio.fecha_limite}</span>}
           </p>
           {portfolio.notas && <p style={{ fontSize:12, color:'#5B6178', marginTop:6, maxWidth:640 }}>{portfolio.notas}</p>}
@@ -826,7 +826,7 @@ function CarteraDetalle({ portfolio, admin, onBack, onPortfolioUpdated, onPortfo
                           <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                             <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setActivoModal(a)}>✏️</button>
                             <button onClick={() => quickDeleteActivo(a)}
-                              style={{ padding:'5px 9px', borderRadius:7, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                              style={{ padding:'5px 9px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
                               🗑
                             </button>
                           </div>
@@ -900,7 +900,7 @@ function ImportModal({ portfolioId, onClose, onImported }) {
 
         <textarea value={text} onChange={e => setText(e.target.value)} rows={10}
           placeholder={'ACTIVO Nº 196 | Referencia interna: c915580639650019195\nProvincia/Ayto: A Coruña / Sada\nDirección (Catastro): LG TORNOS 30 15168 SADA (A CORUÑA)\n...'}
-          style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:12, minHeight:200, resize:'vertical', fontFamily:'monospace', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+          style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:12, minHeight:200, resize:'vertical', fontFamily:'monospace', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
 
         {parsed.length > 0 && (
           <div style={{ marginTop:16 }}>
@@ -1050,7 +1050,7 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
             <div><FL>OB — deuda viva (€)</FL><input className="fi" type="number" value={form.ob} onChange={e => set('ob', e.target.value)} /></div>
             <div><FL>Valor mercado (€)</FL><input className="fi" type="number" value={form.valor_mercado} onChange={e => set('valor_mercado', e.target.value)} /></div>
           </Grid2>
-          <div style={{ marginTop:14, padding:'14px 16px', borderRadius:10, background:nbLive.bg, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+          <div style={{ marginTop:14, padding:'14px 16px', borderRadius:"14px 14px 14px 0", background:nbLive.bg, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
             <div>
               <span style={{ fontSize:12, fontWeight:700, color:nbLive.color, textTransform:'uppercase', letterSpacing:'.5px' }}>LTV: {ltvLive !== null ? `${ltvLive.toFixed(1)}%` : '—'}</span>
               <div style={{ fontSize:11, color:nbLive.color, marginTop:2 }}>Nota automática: {notaAutoLive ?? '—'} · {nbLive.label}</div>
@@ -1093,7 +1093,7 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
           <div style={{ marginTop:12 }}>
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={3}
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:70, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:70, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
@@ -1101,7 +1101,7 @@ function ActivoModal({ activo, portfolioId, onClose, onSaved, onDeleted }) {
           <div>
             {!isNew && (
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
                 {deleting ? 'Eliminando...' : '🗑 Eliminar'}
               </button>
             )}

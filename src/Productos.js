@@ -178,11 +178,11 @@ function CatalogoView({ products, catFilter, setCatFilter, canEdit, onEdit, onAd
     <div>
       {/* Category filters */}
       <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap",alignItems:"center"}}>
-        <button onClick={()=>setCatFilter("all")} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter==="all"?BRAND:"#F6F5F1",color:catFilter==="all"?"white":"#5B6178"}}>
+        <button onClick={()=>setCatFilter("all")} style={{padding:"6px 14px",borderRadius:"20px 20px 20px 0",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter==="all"?BRAND:"#F6F5F1",color:catFilter==="all"?"white":"#5B6178"}}>
           Todos
         </button>
         {Object.entries(CATS).filter(([k])=>allowedCatKeys.includes(k)).map(([k,v])=>(
-          <button key={k} onClick={()=>setCatFilter(k)} style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter===k?v.color:"#F6F5F1",color:catFilter===k?"white":"#5B6178"}}>
+          <button key={k} onClick={()=>setCatFilter(k)} style={{padding:"6px 14px",borderRadius:"20px 20px 20px 0",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",background:catFilter===k?v.color:"#F6F5F1",color:catFilter===k?"white":"#5B6178"}}>
             {v.label}
           </button>
         ))}
@@ -255,10 +255,10 @@ function ProductCard({ product: p, catColor, catLight, canEdit, onEdit, onToggle
   return (
     <div className="card" style={{padding:14,opacity:isInactivo?.55:1,position:"relative",borderTop:`3px solid ${catColor}`}}>
       {isInactivo && (
-        <span style={{position:"absolute",top:8,right:8,fontSize:9,fontWeight:700,background:"#fee2e2",color:"#dc2626",padding:"2px 6px",borderRadius:20}}>INACTIVO</span>
+        <span style={{position:"absolute",top:8,right:8,fontSize:9,fontWeight:700,background:"#fee2e2",color:"#dc2626",padding:"2px 6px",borderRadius:"20px 20px 20px 0"}}>INACTIVO</span>
       )}
       {p.tipo_producto === "paquete_base" && (
-        <span style={{position:"absolute",top:8,right:isInactivo?68:8,fontSize:9,fontWeight:700,background:catLight,color:catColor,padding:"2px 6px",borderRadius:20}}>BASE</span>
+        <span style={{position:"absolute",top:8,right:isInactivo?68:8,fontSize:9,fontWeight:700,background:catLight,color:catColor,padding:"2px 6px",borderRadius:"20px 20px 20px 0"}}>BASE</span>
       )}
       <p style={{fontSize:13,fontWeight:700,color:"#0B1233",marginBottom:6,paddingRight:p.tipo_producto==="paquete_base"?52:0}}>{p.nombre}</p>
       {p.descripcion && <p style={{fontSize:10,color:"#8A8FA3",marginBottom:8,lineHeight:1.4}}>{p.descripcion}</p>}
@@ -327,13 +327,13 @@ function PresupuestosView({ quotes, contacts, products, user, onNew, onDelete })
           );
           return (
             <div key={q.id} className="card" style={{padding:16,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-              <div style={{width:40,height:40,background:"#eff6ff",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📄</div>
+              <div style={{width:40,height:40,background:"#eff6ff",borderRadius:"14px 14px 14px 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📄</div>
               <div style={{flex:1,minWidth:160}}>
                 <p style={{fontSize:13,fontWeight:700,color:BRAND}}>{contact.name}</p>
                 <div style={{display:"flex",gap:10,marginTop:3,flexWrap:"wrap"}}>
                   <span style={{fontSize:10,color:"#8A8FA3"}}>📅 {q.fecha}</span>
                   <span style={{fontSize:10,color:"#8A8FA3"}}>Nº {q.id.slice(-8).toUpperCase()}</span>
-                  <span style={{fontSize:10,fontWeight:700,color:q.tipo_instalacion==="negocio"?"#d97706":"#059669",background:q.tipo_instalacion==="negocio"?"#fffbeb":"#f0fdf4",padding:"1px 7px",borderRadius:20}}>
+                  <span style={{fontSize:10,fontWeight:700,color:q.tipo_instalacion==="negocio"?"#d97706":"#059669",background:q.tipo_instalacion==="negocio"?"#fffbeb":"#f0fdf4",padding:"1px 7px",borderRadius:"20px 20px 20px 0"}}>
                     {q.tipo_instalacion==="negocio"?"🏢 Negocio":"🏠 Residencial"}
                   </span>
                 </div>
@@ -443,7 +443,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       <div style={{display:"flex",gap:10,marginBottom:16}}>
         {[["existing","👤 Contacto existente"],["new","➕ Nuevo cliente"]].map(([v,l])=>(
           <button key={v} onClick={()=>setUseEx(v==="existing")}
-            style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#C9CBD3"}`,background:(useExisting&&v==="existing")||(!useExisting&&v==="new")?"#eff6ff":"white",cursor:"pointer",fontWeight:700,fontSize:12,color:(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#5B6178"}}>
+            style={{flex:1,padding:12,borderRadius:"14px 14px 14px 0",border:`2px solid ${(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#C9CBD3"}`,background:(useExisting&&v==="existing")||(!useExisting&&v==="new")?"#eff6ff":"white",cursor:"pointer",fontWeight:700,fontSize:12,color:(useExisting&&v==="existing")||(!useExisting&&v==="new")?BRAND:"#5B6178"}}>
             {l}
           </button>
         ))}
@@ -453,7 +453,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         <div>
           <label className="fl">Buscar contacto</label>
           <input className="fi" placeholder="🔍 Nombre o teléfono…" value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:8}} />
-          <div style={{maxHeight:200,overflowY:"auto",border:"1.5px solid #C9CBD3",borderRadius:8}}>
+          <div style={{maxHeight:200,overflowY:"auto",border:"1.5px solid #C9CBD3",borderRadius:"14px 14px 14px 0"}}>
             {filteredContacts.slice(0,20).map(c=>(
               <div key={c.id} onClick={()=>setConId(c.id)} style={{padding:"9px 12px",cursor:"pointer",background:contactId===c.id?"#eff6ff":"white",borderBottom:"1px solid #F6F5F1",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
@@ -481,7 +481,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         <label className="fl">Tipo de instalación</label>
         <div style={{display:"flex",gap:10,marginTop:6}}>
           {[["residencial","🏠 Residencial","24 meses permanencia"],["negocio","🏢 Negocio / Profesional","36 meses permanencia"]].map(([v,l,sub])=>(
-            <div key={v} onClick={()=>setTipoInst(v)} style={{flex:1,padding:12,borderRadius:10,border:`2px solid ${tipoInst===v?BRAND:"#C9CBD3"}`,background:tipoInst===v?"#eff6ff":"white",cursor:"pointer"}}>
+            <div key={v} onClick={()=>setTipoInst(v)} style={{flex:1,padding:12,borderRadius:"14px 14px 14px 0",border:`2px solid ${tipoInst===v?BRAND:"#C9CBD3"}`,background:tipoInst===v?"#eff6ff":"white",cursor:"pointer"}}>
               <p style={{fontSize:12,fontWeight:700,color:tipoInst===v?BRAND:"#3A4058"}}>{l}</p>
               <p style={{fontSize:10,color:"#8A8FA3",marginTop:2}}>{sub}</p>
             </div>
@@ -509,7 +509,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       const hasPvp = (p.precio_sin_iva || 0) > 0;
       return (
         <div key={p.id}
-          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:3,borderRadius:8,cursor:"pointer",background:sel?cv.light:"white",border:`1.5px solid ${sel?cv.color:"#E4E2DA"}`}}
+          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:3,borderRadius:"14px 14px 14px 0",cursor:"pointer",background:sel?cv.light:"white",border:`1.5px solid ${sel?cv.color:"#E4E2DA"}`}}
           onClick={()=>toggleItem(p.id, isBase)}>
           {/* Checkbox / radio */}
           <input type={isBase?"radio":"checkbox"} readOnly checked={sel}
@@ -518,7 +518,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
           <div style={{flex:1,minWidth:0}}>
             <p style={{fontSize:12,fontWeight:sel?700:500,color:sel?cv.color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {p.nombre}
-              {isBase && <span style={{marginLeft:6,fontSize:9,fontWeight:700,background:cv.light,color:cv.color,padding:"1px 5px",borderRadius:10,border:`1px solid ${cv.color}`}}>BASE</span>}
+              {isBase && <span style={{marginLeft:6,fontSize:9,fontWeight:700,background:cv.light,color:cv.color,padding:"1px 5px",borderRadius:"14px 14px 14px 0",border:`1px solid ${cv.color}`}}>BASE</span>}
             </p>
             {p.descripcion && <p style={{fontSize:10,color:"#8A8FA3",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.descripcion}</p>}
           </div>
@@ -545,7 +545,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
             <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}} onClick={e=>e.stopPropagation()}>
               {hasPvp && !isBase && (
                 <button onClick={()=>setMode(p.id, it?.modoPrecio==="pvp"?"cuota":"pvp")}
-                  style={{fontSize:9,padding:"2px 6px",borderRadius:20,border:`1px solid ${cv.color}`,background:it?.modoPrecio==="pvp"?cv.color:"white",color:it?.modoPrecio==="pvp"?"white":cv.color,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                  style={{fontSize:9,padding:"2px 6px",borderRadius:"20px 20px 20px 0",border:`1px solid ${cv.color}`,background:it?.modoPrecio==="pvp"?cv.color:"white",color:it?.modoPrecio==="pvp"?"white":cv.color,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
                   {it?.modoPrecio==="pvp"?"PVP":"Cuota"}
                 </button>
               )}
@@ -557,7 +557,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
             </div>
           ) : (
             <button
-              style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:`1.5px solid ${cv.color}`,background:"white",color:cv.color,cursor:"pointer",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}
+              style={{fontSize:11,padding:"4px 10px",borderRadius:"20px 20px 20px 0",border:`1.5px solid ${cv.color}`,background:"white",color:cv.color,cursor:"pointer",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}
               onClick={e=>{e.stopPropagation();toggleItem(p.id,isBase);}}>
               + Añadir
             </button>
@@ -607,7 +607,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
 
           {/* Live totals */}
           <div style={{width:190,flexShrink:0,position:"sticky",top:0}}>
-            <div style={{background:BRAND,borderRadius:12,padding:14,color:"white"}}>
+            <div style={{background:BRAND,borderRadius:"20px 20px 20px 0",padding:14,color:"white"}}>
               <p style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:12,opacity:.8}}>Resumen</p>
               <div style={{fontSize:11,marginBottom:6,display:"flex",justifyContent:"space-between"}}>
                 <span>Cuota sin IVA</span><span style={{fontWeight:700}}>{fmtE(cuota, "/mes")}</span>
@@ -625,7 +625,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
                 <p style={{marginTop:3}}>Tipo: <strong>{tipoInst==="negocio"?"Negocio":"Residencial"}</strong></p>
               </div>
             </div>
-            <div style={{marginTop:10,padding:10,background:"#F6F5F1",borderRadius:10,fontSize:10,color:"#5B6178"}}>
+            <div style={{marginTop:10,padding:10,background:"#F6F5F1",borderRadius:"14px 14px 14px 0",fontSize:10,color:"#5B6178"}}>
               <p style={{fontWeight:700,marginBottom:4}}>{items.length} producto{items.length!==1?"s":""} seleccionado{items.length!==1?"s":""}</p>
               {items.slice(0,5).map(it=>{
                 const p=products.find(x=>x.id===it.productId);
@@ -645,7 +645,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
       <h3 style={{fontSize:14,fontWeight:800,color:BRAND,marginBottom:14}}>Paso 3 — Resumen y generación</h3>
 
       {/* Client info */}
-      <div style={{background:"#F6F5F1",borderRadius:10,padding:12,marginBottom:14,display:"flex",gap:16,flexWrap:"wrap"}}>
+      <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:12,marginBottom:14,display:"flex",gap:16,flexWrap:"wrap"}}>
         <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Cliente</p><p style={{fontSize:12,fontWeight:700,color:BRAND}}>{contactObj?.name || "—"}</p></div>
         {contactObj?.empresa && <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Empresa</p><p style={{fontSize:12,color:"#3A4058"}}>{contactObj.empresa}</p></div>}
         <div><p style={{fontSize:9,fontWeight:700,color:"#8A8FA3",textTransform:"uppercase",marginBottom:2}}>Tipo</p><p style={{fontSize:12,color:"#3A4058"}}>{tipoInst==="negocio"?"🏢 Negocio":"🏠 Residencial"}</p></div>
@@ -673,7 +673,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
                 <tr key={it.productId} style={{borderTop:"1px solid #F6F5F1"}}>
                   <td style={{padding:"7px 10px",fontWeight:600,color:"#0B1233"}}>{p.nombre||"—"}</td>
                   <td style={{padding:"7px 10px",textAlign:"left"}}>{it.cantidad}</td>
-                  <td style={{padding:"7px 10px"}}><span style={{fontSize:10,fontWeight:700,background:it.modoPrecio==="pvp"?"#fffbeb":"#eff6ff",color:it.modoPrecio==="pvp"?"#d97706":BRAND,padding:"1px 7px",borderRadius:20}}>{it.modoPrecio==="pvp"?"Compra":"Cuota"}</span></td>
+                  <td style={{padding:"7px 10px"}}><span style={{fontSize:10,fontWeight:700,background:it.modoPrecio==="pvp"?"#fffbeb":"#eff6ff",color:it.modoPrecio==="pvp"?"#d97706":BRAND,padding:"1px 7px",borderRadius:"20px 20px 20px 0"}}>{it.modoPrecio==="pvp"?"Compra":"Cuota"}</span></td>
                   <td style={{padding:"7px 10px",textAlign:"right",fontWeight:700,color:BRAND}}>{cuotaU>0?fmtE(cuotaIvaU*it.cantidad,"/mes"):"—"}</td>
                   <td style={{padding:"7px 10px",textAlign:"right",color:"#5B6178"}}>{unicoU>0?fmtE(unicoU*it.cantidad):"Incluido"}</td>
                 </tr>
@@ -695,7 +695,7 @@ function QuoteWizardModal({ contacts, products, user, onSave, onClose }) {
         <textarea className="fi" rows={3} placeholder="Información adicional, condiciones especiales…" value={notas} onChange={e=>setNotas(e.target.value)} />
       </div>
 
-      <div style={{background:"#fffbeb",borderRadius:8,padding:10,fontSize:11,color:"#92400e",borderLeft:"3px solid #fbbf24"}}>
+      <div style={{background:"#fffbeb",borderRadius:"14px 14px 14px 0",padding:10,fontSize:11,color:"#92400e",borderLeft:"3px solid #fbbf24"}}>
         ⚠️ Permanencia mínima: <strong>{perm} meses</strong> · {tipoInst==="negocio"?"Negocio/Profesional":"Residencial"}
       </div>
     </div>
@@ -868,7 +868,7 @@ export function ContactQuotes({ contactId, contacts, user }) {
           products, q.tipo_instalacion
         );
         return (
-          <div key={q.id} style={{background:"#F6F5F1",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div key={q.id} style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <div>
               <p style={{fontSize:12,fontWeight:700,color:BRAND}}>Presupuesto {q.id.slice(-8).toUpperCase()}</p>
               <div style={{display:"flex",gap:8,marginTop:3}}>
@@ -1020,7 +1020,7 @@ export default function Productos({ user, contacts }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:800,color:BRAND}}>📦 Productos & Presupuestos</h1>
+          <><div className="eyebrow">Catálogo</div><h1>Productos & Presupuestos</h1></>
           <p style={{color:"#8A8FA3",fontSize:12}}>Catálogo de servicios y generador de presupuestos</p>
         </div>
         <button className="btn-p" onClick={()=>setWizard(true)}>+ Nuevo presupuesto</button>
@@ -1033,7 +1033,7 @@ export default function Productos({ user, contacts }) {
       </div>
 
       {dbError && (
-        <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:12}}>
+        <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:"14px 14px 14px 0",padding:"12px 16px",marginBottom:16,fontSize:12}}>
           <p style={{fontWeight:700,color:"#dc2626",marginBottom:4}}>⚠️ Error al cargar desde Supabase</p>
           <p style={{color:"#991b1b",fontFamily:"monospace"}}>{dbError}</p>
           <p style={{color:"#5B6178",marginTop:6}}>

@@ -109,7 +109,7 @@ function isSameMonth(dateStr) {
 }
 
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ export default function AlarmaSection({ user, users, contacts }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🔐 Alarmas</h1>
+          <><div className="eyebrow">Línea de negocio</div><h1>Alarmas</h1></>
           <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} contratos</p>
         </div>
         <button className="btn-p" onClick={() => setModal('new')}>+ Nuevo contrato</button>
@@ -185,8 +185,8 @@ export default function AlarmaSection({ user, users, contacts }) {
           ...(admin ? [{ l:'Comisiones mes', v:fmt(comisionesMes), i:'💶', c:'#7c3aed' }] : []),
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
-            <div style={{ fontSize:24, marginBottom:6 }}>{s.i}</div>
-            <div style={{ fontSize:22, fontWeight:800, color:s.c, fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
+            
+            <div style={{ fontSize:34, fontWeight:700, letterSpacing:"-.04em", color:"#0B1233", fontFamily:"'Poppins',sans-serif" }}>{s.v}</div>
             <div style={{ fontSize:11, color:'#8A8FA3', marginTop:2 }}>{s.l}</div>
           </div>
         ))}
@@ -265,7 +265,7 @@ export default function AlarmaSection({ user, users, contacts }) {
                           {canEdit && <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setModal(c)}>✏️</button>}
                           {admin && (
                             <button onClick={() => quickDelete(c)}
-                              style={{ padding:'5px 9px', borderRadius:7, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                              style={{ padding:'5px 9px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
                               🗑
                             </button>
                           )}
@@ -426,7 +426,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
           <div style={{ marginBottom:14, position:'relative' }}>
             <FL>Cliente</FL>
             {selCon ? (
-              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0" }}>
                 <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
                 <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
               </div>
@@ -434,7 +434,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
               <>
                 <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
                 {filtCon.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                     {filtCon.map(c => (
                       <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
                         style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
@@ -457,7 +457,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
               return (
                 <button key={key} onClick={() => selectProveedor(key)}
                   style={{
-                    padding:'14px 12px', borderRadius:12, cursor:'pointer', textAlign:'center',
+                    padding:'14px 12px', borderRadius:"20px 20px 20px 0", cursor:'pointer', textAlign:'center',
                     border: on ? `2px solid ${p.color}` : '2px solid #E4E2DA',
                     background: on ? p.bg : 'white',
                     transition:'all .15s',
@@ -476,7 +476,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                 {['hogar','negocio'].map(t => (
                   <button key={t} onClick={() => selectTipoCliente(t)}
                     style={{
-                      padding:'7px 18px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700, textTransform:'capitalize',
+                      padding:'7px 18px', borderRadius:"14px 14px 14px 0", cursor:'pointer', fontSize:12, fontWeight:700, textTransform:'capitalize',
                       border: form.tipo_cliente===t ? `1.5px solid ${BRAND}` : '1.5px solid #C9CBD3',
                       background: form.tipo_cliente===t ? BRAND : 'white',
                       color: form.tipo_cliente===t ? 'white' : '#3A4058',
@@ -491,7 +491,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                 <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                   <button onClick={toggleRenove}
                     style={{
-                      padding:'7px 18px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700,
+                      padding:'7px 18px', borderRadius:"14px 14px 14px 0", cursor:'pointer', fontSize:12, fontWeight:700,
                       border: form.es_renove ? '1.5px solid #059669' : '1.5px solid #C9CBD3',
                       background: form.es_renove ? '#d1fae5' : 'white',
                       color: form.es_renove ? '#059669' : '#3A4058',
@@ -519,7 +519,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                     <FL>Extras</FL>
                     <textarea value={form.extras} onChange={e => set('extras', e.target.value)} rows={2}
                       placeholder="2 Shocksensors adicionales, Cámara exterior..."
-                      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:56, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+                      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:56, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
                   </div>
                   <div><FL>Instalación (€)</FL><input className="fi" type="number" value={form.instalacion_eur} onChange={e => set('instalacion_eur', e.target.value)} /></div>
                   <div><FL>Cuota (€/mes)</FL><input className="fi" type="number" value={form.cuota_eur} onChange={e => set('cuota_eur', e.target.value)} /></div>
@@ -533,14 +533,14 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
             </div>
 
             {/* Panel lateral informativo */}
-            <div style={{ background:'#F6F5F1', borderRadius:12, padding:16, position:'sticky', top:0 }}>
+            <div style={{ background:'#F6F5F1', borderRadius:"20px 20px 20px 0", padding:16, position:'sticky', top:0 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#5B6178', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:10 }}>Resumen</div>
               {prov && (
                 <div style={{ marginBottom:12 }}>
                   <span className="tag" style={{ background:prov.bg, color:prov.color }}>{prov.icon} {prov.label}</span>
                 </div>
               )}
-              <div style={{ background:'#d1fae5', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
+              <div style={{ background:'#d1fae5', borderRadius:"14px 14px 14px 0", padding:'12px 14px', marginBottom:12 }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#059669', textTransform:'uppercase', letterSpacing:'.5px' }}>Comisión estimada</div>
                 <div style={{ fontSize:24, fontWeight:800, color:'#059669', fontFamily:"'Poppins',sans-serif" }}>
                   {comisionEstimada !== null ? fmt(comisionEstimada) : '—'}
@@ -553,7 +553,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
                 </div>
               )}
               {promoProveedor && (
-                <div style={{ background:'#fffbeb', borderRadius:8, padding:'10px 12px', fontSize:11, color:'#92400e', lineHeight:1.5 }}>
+                <div style={{ background:'#fffbeb', borderRadius:"14px 14px 14px 0", padding:'10px 12px', fontSize:11, color:'#92400e', lineHeight:1.5 }}>
                   🎁 {promoProveedor}
                 </div>
               )}
@@ -586,7 +586,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
             <FL>Notas</FL>
             <textarea value={form.notas} onChange={e => set('notas',e.target.value)}
               placeholder="Notas internas sobre el contrato, negociación, condiciones..." rows={4}
-              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           </div>
         </Sec>
 
@@ -594,7 +594,7 @@ function ContratoModal({ contract, user, users, contacts, admin, onClose, onSave
           <div>
             {!isNew && admin && (
               <button onClick={handleDelete} disabled={deleting}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+                style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
                 {deleting ? 'Eliminando...' : '🗑 Eliminar'}
               </button>
             )}

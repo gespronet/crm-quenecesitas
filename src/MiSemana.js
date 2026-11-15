@@ -488,7 +488,7 @@ function ScheduleEditor({ schedule, onSave, durations, onSaveDurations }) {
         </p>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {DIAS.map((dia,i)=>(
-            <div key={dia} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr",gap:12,alignItems:"center",padding:"12px 16px",background:"#F6F5F1",borderRadius:10,border:"1px solid #E4E2DA"}}>
+            <div key={dia} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr",gap:12,alignItems:"center",padding:"12px 16px",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",border:"1px solid #E4E2DA"}}>
               <span style={{fontWeight:800,color:BRAND,fontSize:13}}>{dia}</span>
               <div>
                 <label className="fl">Mañana</label>
@@ -524,7 +524,7 @@ function ScheduleEditor({ schedule, onSave, durations, onSaveDurations }) {
         </p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {Object.entries(ACTIVIDAD).map(([tipo,act])=>(
-            <div key={tipo} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#F6F5F1",borderRadius:10,border:"1px solid #E4E2DA"}}>
+            <div key={tipo} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",border:"1px solid #E4E2DA"}}>
               <span style={{fontSize:14,flexShrink:0}}>{act.icon}</span>
               <span style={{fontSize:12,fontWeight:600,color:"#3A4058",flex:1,minWidth:0}}>{act.label}</span>
               <input
@@ -654,7 +654,7 @@ function PlanificacionView({
             </button>
             {blocks.length>0&&(
               <button
-                style={{fontSize:12,padding:"6px 10px",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:8,cursor:"pointer",fontWeight:600}}
+                style={{fontSize:12,padding:"6px 10px",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:"14px 14px 14px 0",cursor:"pointer",fontWeight:600}}
                 onClick={onResetWeek}
               >
                 🗑️ Resetear semana
@@ -708,7 +708,7 @@ function PlanificacionView({
             <p style={{fontSize:10,color:"#8A8FA3",textAlign:"center",padding:"8px 0"}}>Sin plantillas guardadas</p>
           )}
           {templates.map(t=>(
-            <div key={t.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"6px 8px",background:"#F6F5F1",borderRadius:8,border:"1px solid #E4E2DA"}}>
+            <div key={t.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"6px 8px",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",border:"1px solid #E4E2DA"}}>
               <span style={{fontSize:11,color:"#3A4058",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={t.nombre}>{t.nombre}</span>
               <button
                 style={{fontSize:10,padding:"2px 6px",background:BRAND,color:"white",border:"none",borderRadius:5,cursor:"pointer",flexShrink:0}}
@@ -749,7 +749,7 @@ function PlanificacionView({
             const dayNote = notes[fecha];
             return (
               <div key={dia}
-                style={{background:"#F6F5F1",borderRadius:12,padding:10,minHeight:300,border:"2px solid transparent",transition:"border-color .15s"}}
+                style={{background:"#F6F5F1",borderRadius:"20px 20px 20px 0",padding:10,minHeight:300,border:"2px solid transparent",transition:"border-color .15s"}}
                 onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=BRAND+"50";}}
                 onDragLeave={e=>{e.currentTarget.style.borderColor="transparent";}}
                 onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor="transparent";if(drag){onMove(drag,dayNum);setDrag(null);}}}
@@ -780,7 +780,7 @@ function PlanificacionView({
                         borderRadius:"0 8px 8px 0",
                         padding:"7px 8px",marginBottom:5,cursor:"grab",
                         opacity:block.completada?.75:1,
-                        boxShadow:"0 1px 3px rgba(0,35,146,.06)",
+                        boxShadow:"none",
                       }}
                     >
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>

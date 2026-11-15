@@ -167,7 +167,7 @@ export default function Subastas({ user, contacts, users }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <h1 style={{fontFamily:"'Poppins',sans-serif",fontSize:28,fontWeight:800,color:BRAND}}>⚖️ Subastas Judiciales</h1>
+          <><div className="eyebrow">Línea de negocio</div><h1>Subastas Judiciales</h1></>
           <p style={{color:"#8A8FA3",fontSize:13}}>{filtered.length} subastas</p>
         </div>
         <button className="btn-p" onClick={()=>{setForm({estado:"Activa",comercial_id:user.id});setModal(true);}}>+ Nueva subasta</button>
@@ -198,11 +198,11 @@ export default function Subastas({ user, contacts, users }) {
               </div>
               {a.ubicacion&&<p style={{fontSize:12,color:"#5B6178",marginBottom:10}}>📍 {a.ubicacion}</p>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                <div style={{background:"#F6F5F1",borderRadius:7,padding:"6px 10px"}}>
+                <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:"6px 10px"}}>
                   <p style={{fontSize:10,color:"#8A8FA3",fontWeight:700,textTransform:"uppercase"}}>Fecha subasta</p>
                   <p style={{fontSize:13,fontWeight:700,color:"#0B1233"}}>{a.fecha_subasta||"—"}</p>
                 </div>
-                <div style={{background:"#F6F5F1",borderRadius:7,padding:"6px 10px"}}>
+                <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:"6px 10px"}}>
                   <p style={{fontSize:10,color:"#8A8FA3",fontWeight:700,textTransform:"uppercase"}}>Precio</p>
                   <p style={{fontSize:13,fontWeight:700,color:"#0B1233"}}>{fmt(a.precio_subasta)}</p>
                 </div>
@@ -295,7 +295,7 @@ function AuctionDetail({ auction, user, users, contacts, onClose, onUpdate }) {
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
-            <div style={{width:48,height:48,background:est.bg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>⚖️</div>
+            <div style={{width:48,height:48,background:est.bg,borderRadius:"20px 20px 20px 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>⚖️</div>
             <div>
               <h2 style={{fontSize:18,fontWeight:800,color:BRAND}}>{form.inmueble||"Subasta"}</h2>
               <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
@@ -425,7 +425,7 @@ function AuctionDocuments({ auctionId, user }) {
         </label>
       </div>
       {docs.map(doc=>(
-        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F6F5F1",borderRadius:8,marginBottom:7}}>
+        <div key={doc.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F6F5F1",borderRadius:"14px 14px 14px 0",marginBottom:7}}>
           <span style={{fontSize:18}}>📄</span>
           <div style={{flex:1,minWidth:0}}>
             <p style={{fontSize:12,fontWeight:600,color:"#0B1233",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.nombre}</p>
@@ -799,7 +799,7 @@ function AuctionClients({ auction, user, users, contacts }) {
       <div style={{position:"relative",marginBottom:12}}>
         <input className="fi" placeholder="Buscar cliente por nombre, email o teléfono..." value={search} onChange={e=>setSearch(e.target.value)} />
         {results.length>0&&(
-          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"white",border:"1.5px solid #C9CBD3",borderRadius:8,boxShadow:"0 4px 14px rgba(0,35,146,.1)",zIndex:50,maxHeight:220,overflowY:"auto"}}>
+          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"white",border:"1.5px solid #C9CBD3",borderRadius:"14px 14px 14px 0",boxShadow:"none",zIndex:50,maxHeight:220,overflowY:"auto"}}>
             {results.slice(0,8).map(c=>(
               <div key={c.id} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #F6F5F1",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>link(c)}
                 onMouseEnter={e=>e.currentTarget.style.background="#F6F5F1"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
@@ -824,7 +824,7 @@ function AuctionClients({ auction, user, users, contacts }) {
         const isGenLOI=generatingLOI===lnk.id;
         const isGenLOIJuzgado=generatingLOIJuzgado===lnk.id;
         return (
-          <div key={lnk.id} style={{background:"#F6F5F1",borderRadius:10,padding:13,marginBottom:9,border:lnk.tiene_loi?"1.5px solid #7c3aed20":"1.5px solid transparent"}}>
+          <div key={lnk.id} style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:13,marginBottom:9,border:lnk.tiene_loi?"1.5px solid #7c3aed20":"1.5px solid transparent"}}>
             {/* Header cliente */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
               <div>
@@ -892,7 +892,7 @@ function AuctionClients({ auction, user, users, contacts }) {
                     </div>
                   </div>
                   {fd.loi_oferta&&(
-                    <div style={{background:"#f5f3ff",borderRadius:7,padding:"6px 10px",marginBottom:10,fontSize:11,color:"#7c3aed"}}>
+                    <div style={{background:"#f5f3ff",borderRadius:"14px 14px 14px 0",padding:"6px 10px",marginBottom:10,fontSize:11,color:"#7c3aed"}}>
                       Oferta: <strong>{new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(Number(fd.loi_oferta))}</strong>
                       {fd.loi_honorarios_importe&&<> · Honorarios: <strong>{new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(Number(fd.loi_honorarios_importe))}</strong></>}
                     </div>
@@ -977,7 +977,7 @@ function AuctionInteractions({ auctionId, user, users, contacts }) {
       </div>
 
       {showF&&(
-        <div style={{background:"#F6F5F1",borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{background:"#F6F5F1",borderRadius:"14px 14px 14px 0",padding:14,marginBottom:14}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
             <div><label className="fl">Tipo</label>
               <select className="fi" value={ni.tipo} onChange={e=>setNi(f=>({...f,tipo:e.target.value}))}>

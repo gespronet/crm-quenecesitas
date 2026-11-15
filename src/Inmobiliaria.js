@@ -42,7 +42,7 @@ function fmt(v) {
   return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(v));
 }
 function selSt() {
-  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
+  return { padding:'7px 12px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, color:'#3A4058', background:'white', cursor:'pointer' };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -100,11 +100,11 @@ export default function Inmobiliaria({ user, contacts, users }) {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:28, fontWeight:800, color:BRAND }}>🏠 Inmobiliaria</h1>
+          <><div className="eyebrow">Línea de negocio · Inmuebles</div><h1>Inmobiliaria</h1></>
           <p style={{ color:'#8A8FA3', fontSize:13 }}>{filtered.length} inmuebles</p>
         </div>
         <button onClick={() => setSelected('new')}
-          style={{ padding:'10px 20px', borderRadius:10, border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+          style={{ padding:'10px 20px', borderRadius:"14px 14px 14px 0", border:'none', background:BRAND, color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
           ➕ Nuevo inmueble
         </button>
       </div>
@@ -172,7 +172,7 @@ function InmuebleCard({ p, onView }) {
 
   return (
     <div onClick={onView}
-      style={{ background:'white', borderRadius:14, overflow:'hidden', cursor:'pointer', boxShadow:'0 1px 4px rgba(0,35,146,.07)', transition:'transform .2s,box-shadow .2s' }}
+      style={{ background:'white', borderRadius:"20px 20px 20px 0", overflow:'hidden', cursor:'pointer', boxShadow:"none", transition:'transform .2s,box-shadow .2s' }}
       onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(0,35,146,.14)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 1px 4px rgba(0,35,146,.07)'; }}
     >
@@ -186,7 +186,7 @@ function InmuebleCard({ p, onView }) {
             <span style={{ fontSize:11, color:'#8A8FA3' }}>Sin fotos</span>
           </div>
         )}
-        <span style={{ position:'absolute', top:10, left:10, padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:est.bg, color:est.color }}>
+        <span style={{ position:'absolute', top:10, left:10, padding:'3px 10px', borderRadius:"20px 20px 20px 0", fontSize:11, fontWeight:700, background:est.bg, color:est.color }}>
           {p.estado_venta}
         </span>
         {p.publicado_web && (
@@ -216,7 +216,7 @@ function InmuebleCard({ p, onView }) {
           {p.banos && <span style={{ fontSize:12, color:'#3A4058' }}>🚿 {p.banos}</span>}
         </div>
         <button onClick={e => { e.stopPropagation(); onView(); }}
-          style={{ width:'100%', padding:'7px 0', borderRadius:8, border:`1.5px solid ${BRAND}`, background:'transparent', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          style={{ width:'100%', padding:'7px 0', borderRadius:"14px 14px 14px 0", border:`1.5px solid ${BRAND}`, background:'transparent', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer' }}>
           Ver ficha
         </button>
       </div>
@@ -247,7 +247,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
       {/* Cabecera */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
         <button onClick={onClose}
-          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
+          style={{ background:'none', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", padding:'6px 12px', cursor:'pointer', fontSize:13, fontWeight:600, color:'#3A4058' }}>
           ← Volver
         </button>
         <div style={{ flex:1 }}>
@@ -258,7 +258,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
             <p style={{ fontSize:12, color:'#8A8FA3' }}>
               {prop.referencia}{prop.tipo_inmueble ? ` · ${prop.tipo_inmueble}` : ''}
               {prop.estado_venta && (
-                <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:ESTADOS_VENTA[prop.estado_venta]?.bg, color:ESTADOS_VENTA[prop.estado_venta]?.color }}>
+                <span style={{ marginLeft:8, padding:'1px 8px', borderRadius:"20px 20px 20px 0", fontSize:11, fontWeight:700, background:ESTADOS_VENTA[prop.estado_venta]?.bg, color:ESTADOS_VENTA[prop.estado_venta]?.color }}>
                   {prop.estado_venta}
                 </span>
               )}
@@ -274,7 +274,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
             onClick={() => !t.disabled && setTab(t.id)}
             disabled={t.disabled}
             style={{
-              padding:'7px 16px', borderRadius:8, border:'none', fontSize:12, fontWeight:700,
+              padding:'7px 16px', borderRadius:"14px 14px 14px 0", border:'none', fontSize:12, fontWeight:700,
               cursor: t.disabled ? 'not-allowed' : 'pointer',
               background: tab === t.id ? BRAND : '#f0f3fc',
               color: tab === t.id ? 'white' : t.disabled ? '#c0c8e0' : '#5B6178',
@@ -419,7 +419,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
           <div style={{ position:'relative' }}>
             <FL>Propietario (contacto CRM)</FL>
             {selCon ? (
-              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0" }}>
                 <span style={{ flex:1, fontSize:13, fontWeight:600, color:BRAND }}>{selCon.name}</span>
                 <button onClick={() => { set('contact_id',''); setCSearch(''); }} style={{ fontSize:12, color:'#dc2626', border:'none', background:'none', cursor:'pointer' }}>✕</button>
               </div>
@@ -427,7 +427,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
               <>
                 <input className="fi" placeholder="Buscar contacto..." value={cSearch} onChange={e => setCSearch(e.target.value)} />
                 {filtCon.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:8, zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
+                  <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'white', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", zIndex:200, maxHeight:200, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.12)' }}>
                     {filtCon.map(c => (
                       <div key={c.id} onClick={() => { set('contact_id',c.id); setCSearch(''); }}
                         style={{ padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F6F5F1' }}
@@ -541,14 +541,14 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
           <FL>Descripción comercial (se publica en la web)</FL>
           <textarea value={form.descripcion_web} onChange={e => set('descripcion_web',e.target.value)}
             placeholder="Descripción pública del inmueble..." rows={6}
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:120, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:120, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
           <p style={{ fontSize:11, color:'#8A8FA3', marginTop:4 }}>Este texto aparecerá en la ficha del inmueble en quenecesitashoy.es</p>
         </div>
         <div style={{ marginBottom:12 }}>
           <FL>Notas internas (solo CRM)</FL>
           <textarea value={form.notas_internas} onChange={e => set('notas_internas',e.target.value)}
             placeholder="Notas internas..."
-            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:8, fontSize:13, minHeight:80, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:80, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
         <Grid2>
           <div><FL>URL Vídeo YouTube</FL><input className="fi" value={form.video_url} onChange={e => set('video_url',e.target.value)} placeholder="https://youtube.com/..." /></div>
@@ -561,13 +561,13 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
         <div>
           {!isNew && (
             <button onClick={handleDelete} disabled={deleting}
-              style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
+              style={{ padding:'9px 16px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:700, cursor: deleting ? 'not-allowed' : 'pointer' }}>
               {deleting ? 'Eliminando...' : '🗑 Eliminar inmueble'}
             </button>
           )}
         </div>
         <button onClick={handleSave} disabled={saving}
-          style={{ padding:'10px 28px', borderRadius:8, border:'none', background: saving ? '#8A8FA3' : BRAND, color:'white', fontSize:13, fontWeight:700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+          style={{ padding:'10px 28px', borderRadius:"14px 14px 14px 0", border:'none', background: saving ? '#8A8FA3' : BRAND, color:'white', fontSize:13, fontWeight:700, cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? 'Guardando...' : isNew ? '✓ Crear inmueble' : '✓ Guardar cambios'}
         </button>
       </div>
@@ -683,7 +683,7 @@ function TabFotos({ property, onPropUpdated }) {
           <p style={{ fontSize:11, color:'#8A8FA3' }}>Arrastra para reordenar · La primera foto es la imagen principal</p>
         </div>
         <label style={{ cursor: uploadProgress ? 'not-allowed' : 'pointer' }}>
-          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:8, background: uploadProgress ? '#8A8FA3' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
+          <span style={{ display:'inline-block', padding:'9px 18px', borderRadius:"14px 14px 14px 0", background: uploadProgress ? '#8A8FA3' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
             {uploadProgress ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}...` : '+ Añadir fotos'}
           </span>
           <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} disabled={!!uploadProgress} multiple />
@@ -703,7 +703,7 @@ function TabFotos({ property, onPropUpdated }) {
       )}
 
       {photos.length === 0 && !uploadProgress && (
-        <div style={{ textAlign:'center', padding:'50px 0', background:'#F6F5F1', borderRadius:12, border:'2px dashed #C9CBD3', color:'#8A8FA3' }}>
+        <div style={{ textAlign:'center', padding:'50px 0', background:'#F6F5F1', borderRadius:"20px 20px 20px 0", border:'2px dashed #C9CBD3', color:'#8A8FA3' }}>
           <div style={{ fontSize:44, marginBottom:8 }}>📷</div>
           <p style={{ fontSize:13 }}>No hay fotos. Añade la primera.</p>
           <p style={{ fontSize:11, marginTop:4 }}>JPG, PNG o WEBP</p>
@@ -717,7 +717,7 @@ function TabFotos({ property, onPropUpdated }) {
             onDragOver={e => { e.preventDefault(); setDragOver(idx); }}
             onDrop={e => handleDrop(e, idx)}
             onDragEnd={() => { setDragIdx(null); setDragOver(null); }}
-            style={{ position:'relative', borderRadius:10, overflow:'hidden', border: dragOver===idx ? `2.5px dashed ${BRAND}` : '2px solid #E4E2DA', cursor:'grab', opacity: dragIdx===idx ? 0.4 : 1, background:'#111' }}
+            style={{ position:'relative', borderRadius:"14px 14px 14px 0", overflow:'hidden', border: dragOver===idx ? `2.5px dashed ${BRAND}` : '2px solid #E4E2DA', cursor:'grab', opacity: dragIdx===idx ? 0.4 : 1, background:'#111' }}
           >
             {signedUrls[photo.id] ? (
               <img src={signedUrls[photo.id]} alt="" onLoad={handleImgLoad(photo.id)}
@@ -726,7 +726,7 @@ function TabFotos({ property, onPropUpdated }) {
               <div style={{ width:'100%', aspectRatio:'4/5', display:'flex', alignItems:'center', justifyContent:'center', color:'#8A8FA3', fontSize:11 }}>Cargando...</div>
             )}
             {idx === 0 && (
-              <span style={{ position:'absolute', top:8, left:8, background:BRAND, color:'white', fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:20 }}>PRINCIPAL</span>
+              <span style={{ position:'absolute', top:8, left:8, background:BRAND, color:'white', fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:"20px 20px 20px 0" }}>PRINCIPAL</span>
             )}
             <button onClick={() => handleDelete(photo)}
               style={{ position:'absolute', top:8, right:8, width:26, height:26, borderRadius:'50%', background:'rgba(220,38,38,.88)', color:'white', border:'none', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -803,7 +803,7 @@ function TabDocs({ property, user }) {
           {DOC_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-          <span style={{ display:'inline-block', padding:'8px 18px', borderRadius:8, background: uploading ? '#8A8FA3' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
+          <span style={{ display:'inline-block', padding:'8px 18px', borderRadius:"14px 14px 14px 0", background: uploading ? '#8A8FA3' : BRAND, color:'white', fontSize:12, fontWeight:700, pointerEvents:'none' }}>
             {uploading ? 'Subiendo...' : '+ Subir PDF'}
           </span>
           <input type="file" accept=".pdf,application/pdf" style={{ display:'none' }} onChange={handleUpload} disabled={uploading} />
@@ -811,7 +811,7 @@ function TabDocs({ property, user }) {
       </div>
 
       {docs.length === 0 && (
-        <div style={{ textAlign:'center', padding:'50px 0', background:'#F6F5F1', borderRadius:12, border:'2px dashed #C9CBD3', color:'#8A8FA3' }}>
+        <div style={{ textAlign:'center', padding:'50px 0', background:'#F6F5F1', borderRadius:"20px 20px 20px 0", border:'2px dashed #C9CBD3', color:'#8A8FA3' }}>
           <div style={{ fontSize:40, marginBottom:8 }}>📄</div>
           <p style={{ fontSize:13 }}>No hay documentos.</p>
         </div>
@@ -819,7 +819,7 @@ function TabDocs({ property, user }) {
 
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {docs.map(doc => (
-          <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background:'white', borderRadius:10, border:'1.5px solid #E4E2DA' }}>
+          <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background:'white', borderRadius:"14px 14px 14px 0", border:'1.5px solid #E4E2DA' }}>
             <span style={{ fontSize:22, flexShrink:0 }}>📄</span>
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:13, fontWeight:700, color:'#0B1233', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.nombre}</p>
@@ -828,11 +828,11 @@ function TabDocs({ property, user }) {
               </p>
             </div>
             <button onClick={() => handleDownload(doc)}
-              style={{ padding:'6px 12px', borderRadius:7, border:`1.5px solid ${BRAND}`, background:'transparent', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+              style={{ padding:'6px 12px', borderRadius:"14px 14px 14px 0", border:`1.5px solid ${BRAND}`, background:'transparent', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
               Descargar
             </button>
             <button onClick={() => handleDelete(doc)}
-              style={{ padding:'6px 10px', borderRadius:7, border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+              style={{ padding:'6px 10px', borderRadius:"14px 14px 14px 0", border:'1.5px solid #fee2e2', background:'#fef2f2', color:'#dc2626', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
               ✕
             </button>
           </div>
@@ -879,7 +879,7 @@ function TabPublicacion({ property, onPropUpdated }) {
   return (
     <div style={{ maxWidth:600 }}>
       {/* Toggle */}
-      <div style={{ background:'white', borderRadius:14, padding:28, marginBottom:20, boxShadow:'0 1px 4px rgba(0,35,146,.07)' }}>
+      <div style={{ background:'white', borderRadius:"20px 20px 20px 0", padding:28, marginBottom:20, boxShadow:"none" }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:20 }}>
           <div>
             <h3 style={{ fontSize:16, fontWeight:800, color:BRAND, marginBottom:6 }}>Publicar en quenecesitashoy.es/inmuebles/</h3>
@@ -897,17 +897,17 @@ function TabPublicacion({ property, onPropUpdated }) {
         </div>
         <div style={{ marginTop:16 }}>
           {published ? (
-            <span style={{ fontSize:13, fontWeight:700, color:'#059669', background:'#d1fae5', padding:'4px 14px', borderRadius:20 }}>🌐 Publicado</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'#059669', background:'#d1fae5', padding:'4px 14px', borderRadius:"20px 20px 20px 0" }}>🌐 Publicado</span>
           ) : (
-            <span style={{ fontSize:13, fontWeight:700, color:'#5B6178', background:'#f3f4f6', padding:'4px 14px', borderRadius:20 }}>⭕ No publicado</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'#5B6178', background:'#f3f4f6', padding:'4px 14px', borderRadius:"20px 20px 20px 0" }}>⭕ No publicado</span>
           )}
         </div>
       </div>
 
       {/* Vista previa */}
-      <div style={{ background:'white', borderRadius:14, padding:20, boxShadow:'0 1px 4px rgba(0,35,146,.07)' }}>
+      <div style={{ background:'white', borderRadius:"20px 20px 20px 0", padding:20, boxShadow:"none" }}>
         <h3 style={{ fontSize:11, fontWeight:800, color:BRAND, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:16 }}>Vista previa web</h3>
-        <div style={{ border:'1.5px solid #E4E2DA', borderRadius:12, overflow:'hidden' }}>
+        <div style={{ border:'1.5px solid #E4E2DA', borderRadius:"20px 20px 20px 0", overflow:'hidden' }}>
           <div style={{ height:180, background:'#F6F5F1', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
             {coverUrl
               ? <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
