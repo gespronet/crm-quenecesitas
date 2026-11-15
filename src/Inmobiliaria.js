@@ -24,7 +24,7 @@ const DOC_TIPOS = ['Nota simple','Nota catastro','Certificado energético','Plan
 
 const EMPTY_FORM = {
   titulo:'', tipo_inmueble:'', estado_venta:'Disponible', estado_conservacion:'',
-  comercial_id:'', contact_id:'', precio:'', precio_minimo:'',
+  comercial_id:'', contact_id:'', precio:'', precio_minimo:'', precio_venta_acordado:'',
   direccion:'', localidad:'', municipio:'', provincia:'', codigo_postal:'', zona_barrio:'',
   superficie_construida:'', superficie_util:'', superficie_parcela:'',
   habitaciones:'', banos:'', aseos:'', planta:'', orientacion:'', ano_construccion:'',
@@ -302,7 +302,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
     titulo: property.titulo||'', tipo_inmueble: property.tipo_inmueble||'',
     estado_venta: property.estado_venta||'Disponible', estado_conservacion: property.estado_conservacion||'',
     comercial_id: property.comercial_id||'', contact_id: property.contact_id||'',
-    precio: property.precio||'', precio_minimo: property.precio_minimo||'',
+    precio: property.precio||'', precio_minimo: property.precio_minimo||'', precio_venta_acordado: property.precio_venta_acordado||'',
     direccion: property.direccion||'', localidad: property.localidad||'',
     municipio: property.municipio||'', provincia: property.provincia||'',
     codigo_postal: property.codigo_postal||'', zona_barrio: property.zona_barrio||'',
@@ -345,6 +345,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
         ...form,
         precio: numOrNull(form.precio),
         precio_minimo: numOrNull(form.precio_minimo),
+        precio_venta_acordado: numOrNull(form.precio_venta_acordado),
         superficie_construida: numOrNull(form.superficie_construida),
         superficie_util: numOrNull(form.superficie_util),
         superficie_parcela: numOrNull(form.superficie_parcela),
@@ -466,6 +467,10 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
               <input className="fi" type="number" value={form.precio_minimo} onChange={e => set('precio_minimo',e.target.value)} placeholder="0" />
             </div>
           )}
+          <div>
+            <FL>Precio venta acordado (€) — final</FL>
+            <input className="fi" type="number" value={form.precio_venta_acordado} onChange={e => set('precio_venta_acordado',e.target.value)} placeholder="Se rellena al cerrar la venta" />
+          </div>
         </Grid2>
       </Sec>
 
@@ -920,6 +925,9 @@ function TabPublicacion({ property, onPropUpdated }) {
             <p style={{ fontSize:12, color:'#5B6178', marginBottom:8 }}>📍 {[property.localidad, property.municipio].filter(Boolean).join(', ')||'—'}</p>
             {property.precio && (
               <p style={{ fontSize:20, fontWeight:800, color:'#059669', fontFamily:"'Poppins',sans-serif", marginBottom:8 }}>{fmt(property.precio)}</p>
+            )}
+            {property.precio_venta_acordado && (
+              <p style={{ fontSize:14, color:'#0B1233', marginBottom:8 }}><span className="mono" style={{ fontSize:10, letterSpacing:'.08em', color:'#5B6178', marginRight:6 }}>VENTA ACORDADA</span><strong>{fmt(property.precio_venta_acordado)}</strong></p>
             )}
             <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
               {property.superficie_construida && <span style={{ fontSize:12, color:'#3A4058' }}>📐 {property.superficie_construida} m²</span>}
