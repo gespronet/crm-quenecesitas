@@ -24,7 +24,7 @@ const DOC_TIPOS = ['Nota simple','Nota catastro','Certificado energético','Plan
 
 const EMPTY_FORM = {
   titulo:'', tipo_inmueble:'', estado_venta:'Disponible', estado_conservacion:'',
-  comercial_id:'', contact_id:'', precio:'', precio_minimo:'', precio_venta_acordado:'',
+  comercial_id:'', contact_id:'', precio:'', precio_minimo:'', precio_venta_acordado:'', comision_pct:'', reparto_pct:100,
   direccion:'', localidad:'', municipio:'', provincia:'', codigo_postal:'', zona_barrio:'',
   superficie_construida:'', superficie_util:'', superficie_parcela:'',
   habitaciones:'', banos:'', aseos:'', planta:'', orientacion:'', ano_construccion:'',
@@ -302,7 +302,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
     titulo: property.titulo||'', tipo_inmueble: property.tipo_inmueble||'',
     estado_venta: property.estado_venta||'Disponible', estado_conservacion: property.estado_conservacion||'',
     comercial_id: property.comercial_id||'', contact_id: property.contact_id||'',
-    precio: property.precio||'', precio_minimo: property.precio_minimo||'', precio_venta_acordado: property.precio_venta_acordado||'',
+    precio: property.precio||'', precio_minimo: property.precio_minimo||'', precio_venta_acordado: property.precio_venta_acordado||'', comision_pct: property.comision_pct??'', reparto_pct: property.reparto_pct??100,
     direccion: property.direccion||'', localidad: property.localidad||'',
     municipio: property.municipio||'', provincia: property.provincia||'',
     codigo_postal: property.codigo_postal||'', zona_barrio: property.zona_barrio||'',
@@ -346,6 +346,8 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
         precio: numOrNull(form.precio),
         precio_minimo: numOrNull(form.precio_minimo),
         precio_venta_acordado: numOrNull(form.precio_venta_acordado),
+        comision_pct: numOrNull(form.comision_pct),
+        reparto_pct: numOrNull(form.reparto_pct) ?? 100,
         superficie_construida: numOrNull(form.superficie_construida),
         superficie_util: numOrNull(form.superficie_util),
         superficie_parcela: numOrNull(form.superficie_parcela),
@@ -473,6 +475,41 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
           </div>
         </Grid2>
       </Sec>
+
+      {isAdmin && (() => {
+        const com = Number(form.comision_pct)||0, rep = form.reparto_pct===''||form.reparto_pct==null ? 100 : Number(form.reparto_pct);
+        const ben = v => v ? Math.round(Number(v)*com/100*rep/100) : null;
+        const eur = v => v==null ? '—' : v.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' €';
+        const est = ben(form.precio), fin = ben(form.precio_venta_acordado);
+        const box = (label, val, hi) => (
+          <div style={{ background: hi ? '#00208F' : '#F6F5F1', color: hi ? 'white' : '#0B1233', borderRadius:'14px 14px 14px 0', padding:'12px 14px', border: hi ? 'none' : '1px solid #E4E2DA' }}>
+            <div className="mono" style={{ fontSize:10, letterSpacing:'.08em', textTransform:'uppercase', color: hi ? '#8FA2F0' : '#5B6178' }}>{label}</div>
+            <div style={{ fontFamily:"'Poppins',sans-serif", fontWeight:700, fontSize:22, letterSpacing:'-.03em', marginTop:4 }}>{eur(val)}</div>
+          </div>);
+        return (
+          <Sec title="Beneficio para nosotros">
+            <Grid2>
+              <div>
+                <FL>Comisión (%)</FL>
+                <input className="fi" type="number" step="0.01" value={form.comision_pct} onChange={e => set('comision_pct',e.target.value)} placeholder="Ej. 3" />
+              </div>
+              <div>
+                <FL>Reparto de la comisión (%)</FL>
+                <select className="fi" value={[100,50].includes(Number(form.reparto_pct)) ? String(Number(form.reparto_pct)) : 'otro'} onChange={e => set('reparto_pct', e.target.value==='otro' ? '' : Number(e.target.value))}>
+                  <option value="100">100 % — sin compartir</option>
+                  <option value="50">50 % — compartida</option>
+                  <option value="otro">Otro…</option>
+                </select>
+                {![100,50].includes(Number(form.reparto_pct)) && (
+                  <input className="fi" style={{ marginTop:6 }} type="number" step="0.01" value={form.reparto_pct} onChange={e => set('reparto_pct',e.target.value)} placeholder="% que nos corresponde" />
+                )}
+              </div>
+              {box('Beneficio estimado · precio de venta', est)}
+              {box('Beneficio final · precio acordado', fin, true)}
+            </Grid2>
+          </Sec>
+        );
+      })()}
 
       <Sec title="Ubicación">
         <Grid2>
