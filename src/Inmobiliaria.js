@@ -6,6 +6,7 @@ const TIPOS_INMUEBLE = ['Piso','Casa/Chalet','Local comercial','Oficina','Garaje
 const ESTADOS_VENTA = {
   Disponible: { color:'#059669', bg:'#d1fae5' },
   Reservado:  { color:'#d97706', bg:'#fef3c7' },
+  'Contrato arras': { color:'#00208F', bg:'#DCE3FF' },
   Vendido:    { color:'#dc2626', bg:'#fee2e2' },
 };
 const ESTADOS_CONSERVACION = ['Nuevo','Buen estado','A reformar'];

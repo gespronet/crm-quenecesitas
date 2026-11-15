@@ -35,12 +35,13 @@ const ETAPAS = {
   alarmas:       ["prospecto","contacto","visita","propuesta","contrato","instalado","perdido"],
   energia:       ["factura_recibida","enviada_partner","opciones_recibidas","seleccionada","docs_solicitados","contratado","seguimiento"],
   telefonia:     ["prospecto","documentacion","enviado_operador","en_tramite","activo","incidencia","baja"],
-  inmobiliaria:  ["captación","valoración","publicado","visita","oferta","cerrado","perdido"],
+  inmobiliaria:  ["captación","en_venta","reservado","arras","vendido"],
   venta_directa: ["identificado","análisis","propuesta","negociación","docs_solicitados","cerrado","perdido"],
   npl:           ["identificado","análisis","oferta_enviada","negociación","cerrado","descartado"],
 };
 
 const ETAPA_LABELS = {
+  reservado:"Reservado", en_venta:"En venta", arras:"Contrato arras", vendido:"Vendido ✓",
   prospecto:"Prospecto", contacto:"Contacto", visita:"Visita", propuesta:"Propuesta",
   contrato:"Contrato", instalado:"Instalado ✓", perdido:"Perdido ✗",
   análisis:"Análisis", firmado:"Firmado", activo:"Activo ✓",
@@ -486,7 +487,7 @@ export default function App() {
   const vis = (user.role==="admin"||user.role==="socio") ? data.users.map(u=>u.id) : [user.id];
   const isBoss = ["admin","socio"].includes(user.role);
   const myCon = data.contacts.filter(c=>(isBoss||vis.includes(c.comercialId))&&parseLinea(c.linea).some(l=>canSee(l)));
-  const myDea = data.deals.filter(d=>vis.includes(d.comercialId)&&canSee(d.linea));
+  const myDea = data.deals.filter(d=>(["admin","socio"].includes(user.role)||vis.includes(d.comercialId))&&canSee(d.linea));
   const myTas = data.tasks.filter(t=>vis.includes(t.comercialId));
 
   const navItems = [
@@ -1483,7 +1484,7 @@ function Pipeline({deals,contacts,users,user,onSaveDeal,onDeleteDeal,onMoveDeal,
   const [mobEtapa,setMobEtapa]=useState("");
 
   const etapas=ETAPAS[al]||[];
-  const lDe=deals.filter(d=>d.linea===al);
+  const lDe=deals.filter(d=>d.linea===al).map(d=>(ETAPAS[al]||[]).includes(d.etapa)?d:{...d,etapa:(ETAPAS[al]||[])[0]});
   const activeMobEtapa=mobEtapa&&etapas.includes(mobEtapa)?mobEtapa:(etapas[0]||"");
   const openNew=()=>{setForm({linea:al,etapa:etapas[0],comercialId:user.id,valor:""});setModal("new");};
   const save=async()=>{if(!form.titulo?.trim())return;await onSaveDeal(form,modal==="new");setModal(null);};
