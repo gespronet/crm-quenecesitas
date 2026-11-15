@@ -218,6 +218,7 @@ const CSS = `
     .stats-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
     .dash-grid{grid-template-columns:1fr!important;}
     .week-grid{grid-template-columns:1fr!important;}
+    .mandato-grid{grid-template-columns:1fr!important;}
 
     /* Pipeline kanban → selector de columna */
     .kanban-mob-sel{display:flex!important;}

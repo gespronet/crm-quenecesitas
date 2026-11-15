@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, sanitizeFileName, compressFileIfPdf } from './utils/supabase';
+import TabMandato from './Mandato';
 
 const BRAND = '#00208F';
 const TIPOS_INMUEBLE = ['Piso','Casa/Chalet','Local comercial','Oficina','Garaje','Trastero','Terreno','Nave industrial','Finca rústica'];
@@ -241,6 +242,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
     { id:'fotos',      label:'📷 Fotos',      disabled: isNew && !prop },
     { id:'docs',       label:'📄 Documentos', disabled: isNew && !prop },
     { id:'publicacion',label:'🌐 Publicación', disabled: isNew && !prop },
+    { id:'mandato',    label:'✍️ Mandato',    disabled: isNew && !prop },
   ];
 
   return (
@@ -290,6 +292,7 @@ function InmuebleFicha({ property, user, users, contacts, onClose, onSaved, onDe
       {tab === 'fotos'       && prop && <TabFotos property={prop} onPropUpdated={handleSaved} />}
       {tab === 'docs'        && prop && <TabDocs property={prop} user={user} />}
       {tab === 'publicacion' && prop && <TabPublicacion property={prop} onPropUpdated={handleSaved} />}
+      {tab === 'mandato'     && prop && <TabMandato property={prop} user={user} contacts={contacts} />}
     </div>
   );
 }
