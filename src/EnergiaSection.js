@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, compressFileIfPdf } from './utils/supabase';
 
 const BRAND = '#00208F';
+const eurE = v => (v == null || v === '' || isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
 
 const ESTADOS_ENERGIA = {
   factura_recibida:   { label:'Factura recibida',    color:'#f59e0b', bg:'#fffbeb' },
@@ -11,6 +12,7 @@ const ESTADOS_ENERGIA = {
   docs_solicitados:   { label:'Docs solicitados',     color:'#f97316', bg:'#fff7ed' },
   contratado:         { label:'Contratado ✓',         color:'#10b981', bg:'#d1fae5' },
   seguimiento:        { label:'Seguimiento',          color:'#059669', bg:'#d1fae5' },
+  baja:               { label:'Baja / cancelado',     color:'#dc2626', bg:'#fee2e2' },
 };
 
 const TARIFAS_LUZ = ['2.0TD','3.0TD','6.1TD','Otra'];
@@ -156,6 +158,8 @@ export default function EnergiaSection({ user, users, contacts }) {
           { l:'Contratados', v:contratados, i:'✅', c:'#10b981' },
           { l:'En seguimiento', v:enSeguimiento, i:'🔔', c:'#059669' },
           { l:'Próximas renovaciones', v:proximasRenovaciones, i:'⚠️', c:'#d97706' },
+          { l:'Comisiones liquidadas', v:eurE(procesos.filter(p=>['liquidada','retrocedida'].includes(p.comision_estado)).reduce((a,p)=>a+(Number(p.comision_eur)||0),0)), i:'', c:BRAND },
+          { l:'Parte Qué necesitas hoy', v:eurE(procesos.filter(p=>['liquidada','retrocedida'].includes(p.comision_estado)).reduce((a,p)=>a+(Number(p.comision_qnh_eur)||0),0)), i:'', c:BRAND },
         ].map(s => (
           <div key={s.l} className="sc" style={{ borderLeftColor:s.c }}>
             
@@ -199,7 +203,7 @@ export default function EnergiaSection({ user, users, contacts }) {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#F6F5F1' }}>
-                  {['Cliente','Tipo','Comercializadora actual','Factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial',''].map(h => (
+                  {['Cliente','Tipo','Comercializadora actual','Factura','Estado','Comercializadora nueva','Fecha vencimiento','Comercial','Comisión',''].map(h => (
                     <th key={h} style={{ padding:'9px 13px', textAlign:'left', fontSize:10, fontWeight:700, color:'#5B6178', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'.5px' }}>{h}</th>
                   ))}
                 </tr>
@@ -228,6 +232,13 @@ export default function EnergiaSection({ user, users, contacts }) {
                         {(p.estado === 'contratado' || p.estado === 'seguimiento') ? (p.fecha_vencimiento || '—') : '—'}
                       </td>
                       <td style={{ padding:'9px 13px', fontSize:11, color:'#3A4058', whiteSpace:'nowrap' }}>{com?.name || '—'}</td>
+                      <td style={{ padding:'9px 13px', fontSize:12, whiteSpace:'nowrap' }}>
+                        {p.comision_eur != null ? <>
+                          <b style={{ color:'#0B1233' }}>{eurE(p.comision_eur)}</b>
+                          <span className="mono" style={{ fontSize:10, color: p.comision_estado==='liquidada' ? '#00208F' : '#8A8FA3', marginLeft:6 }}>{(p.comision_estado||'pendiente').toUpperCase()}</span>
+                          {Number(p.reparto_comercial_pct) > 0 && <div style={{ fontSize:10, color:'#5B6178' }}>Comercial {eurE(p.comision_comercial_eur)} · QNH {eurE(p.comision_qnh_eur)}</div>}
+                        </> : '—'}
+                      </td>
                       <td style={{ padding:'9px 13px', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                           <button className="btn-g" style={{ padding:'5px 9px' }} onClick={() => setSelectedId(p.id)}>📂 Abrir</button>
@@ -334,7 +345,11 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
     cups: proceso.cups||'', tarifa_actual: proceso.tarifa_actual||'2.0TD',
     comercializadora_actual: proceso.comercializadora_actual||'', direccion_suministro: proceso.direccion_suministro||'',
     comercial_id: proceso.comercial_id||'', notas: proceso.notas||'',
-  } : { ...EMPTY_FORM, comercial_id: user.id };
+    comercializadora_nueva: proceso.comercializadora_nueva||'', distribuidora_partner: proceso.distribuidora_partner||'',
+    fecha_alta: proceso.fecha_alta||'', comision_eur: proceso.comision_eur ?? '', reparto_comercial_pct: proceso.reparto_comercial_pct ?? 50,
+    comision_estado: proceso.comision_estado||'pendiente', factura_comision: proceso.factura_comision||'', liquidacion_ref: proceso.liquidacion_ref||'',
+    fecha_liquidacion: proceso.fecha_liquidacion||'',
+  } : { ...EMPTY_FORM, comercial_id: user.id, reparto_comercial_pct: 50, comision_estado:'pendiente' };
 
   const [form, setForm] = useState(initForm);
   const [saving, setSaving] = useState(false);
@@ -354,6 +369,18 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
     comercializadora_actual: form.comercializadora_actual || null,
     direccion_suministro: form.direccion_suministro || null,
     comercial_id: form.comercial_id || null, notas: form.notas || null,
+    ...(admin ? (() => {
+      const base = form.comision_eur === '' || form.comision_eur == null ? null : Number(form.comision_eur);
+      const pct = Number(form.reparto_comercial_pct) || 0;
+      const parteCom = base == null ? null : Math.round(base * pct) / 100;
+      return {
+        comercializadora_nueva: form.comercializadora_nueva || null, distribuidora_partner: form.distribuidora_partner || null,
+        fecha_alta: form.fecha_alta || null, comision_eur: base, reparto_comercial_pct: pct,
+        comision_comercial_eur: parteCom, comision_qnh_eur: base == null ? null : Math.round((base - parteCom) * 100) / 100,
+        comision_estado: form.comision_estado || 'pendiente', factura_comision: form.factura_comision || null,
+        liquidacion_ref: form.liquidacion_ref || null, fecha_liquidacion: form.fecha_liquidacion || null,
+      };
+    })() : {}),
   });
 
   const handleSave = async (extra = {}, busySetter = setSaving) => {
@@ -545,6 +572,33 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
             style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #C9CBD3', borderRadius:"14px 14px 14px 0", fontSize:13, minHeight:90, resize:'vertical', fontFamily:'inherit', color:'#0B1233', outline:'none', boxSizing:'border-box' }} />
         </div>
       </Sec>
+
+      {admin && (
+        <Sec title="Comisión y reparto">
+          <Grid2>
+            <div><FL>Comercializadora contratada</FL><input className="fi" value={form.comercializadora_nueva} onChange={e => set('comercializadora_nueva', e.target.value)} /></div>
+            <div><FL>Partner que liquida</FL><input className="fi" value={form.distribuidora_partner} onChange={e => set('distribuidora_partner', e.target.value)} placeholder="Energy Tricolor" /></div>
+            <div><FL>Fecha de alta</FL><input className="fi" type="date" value={form.fecha_alta} onChange={e => set('fecha_alta', e.target.value)} /></div>
+            <div><FL>Comisión (€, sin IVA)</FL><input className="fi" type="number" step="0.01" value={form.comision_eur} onChange={e => set('comision_eur', e.target.value)} /></div>
+            <div><FL>Reparto al comercial</FL>
+              <select className="fi" value={String(form.reparto_comercial_pct)} onChange={e => set('reparto_comercial_pct', Number(e.target.value))}>
+                <option value="50">50 % — captado por el comercial</option><option value="0">0 % — operación propia de QNH</option><option value="100">100 % — íntegro al comercial</option>
+              </select></div>
+            <div><FL>Estado de la comisión</FL>
+              <select className="fi" value={form.comision_estado} onChange={e => set('comision_estado', e.target.value)}>
+                <option value="pendiente">Pendiente</option><option value="liquidada">Liquidada (cobrada)</option><option value="retrocedida">Retrocedida (baja)</option><option value="no_aplica">No aplica</option>
+              </select></div>
+            <div><FL>Factura emitida</FL><input className="fi" value={form.factura_comision} onChange={e => set('factura_comision', e.target.value)} placeholder="A-63L-2026-0X" /></div>
+            <div><FL>Liquidación del partner</FL><input className="fi" value={form.liquidacion_ref} onChange={e => set('liquidacion_ref', e.target.value)} placeholder="LIQ_…" /></div>
+            <div><FL>Fecha de cobro</FL><input className="fi" type="date" value={form.fecha_liquidacion} onChange={e => set('fecha_liquidacion', e.target.value)} /></div>
+          </Grid2>
+          {form.comision_eur !== '' && form.comision_eur != null && (
+            <p style={{ marginTop:10, fontSize:13, color:'#0B1233' }}>
+              Comercial: <b>{eurE(Math.round(Number(form.comision_eur) * Number(form.reparto_comercial_pct)) / 100)}</b> · Qué necesitas hoy: <b>{eurE(Number(form.comision_eur) - Math.round(Number(form.comision_eur) * Number(form.reparto_comercial_pct)) / 100)}</b>
+            </p>
+          )}
+        </Sec>
+      )}
 
       <Sec title="Factura">
         {proceso?.factura_url && (

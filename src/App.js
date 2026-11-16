@@ -81,6 +81,7 @@ const toCamel = (obj) => {
     codigo_postal:   "codigoPostal",
     storage_path:    "storagePath",
     descripcion_rol: "descripcionRol",
+    auth_id:         "authId",
   };
   return Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] || k, v]));
 };
@@ -101,6 +102,7 @@ const toSnake = (obj) => {
     codigoPostal:  "codigo_postal",
     storagePath:   "storage_path",
     descripcionRol:"descripcion_rol",
+    authId:        "auth_id",
   };
   return Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] || k, v]));
 };
@@ -118,7 +120,7 @@ const parseLinea = (v) => {
   return [];
 };
 
-const CSS = `
+export const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
   .crm-root{font-family:'DM Sans',system-ui,sans-serif;display:flex;height:100vh;overflow:hidden;background:#F6F5F1;}
@@ -279,6 +281,8 @@ function LoadingScreen() {
   );
 }
 
+const USER_COLS = 'id,name,email,role,linea_permisos,manager_id,dni,cargo,domicilio,auth_id';
+
 export default function App() {
   const [data, setData] = useState({users:[],contacts:[],interactions:[],deals:[],tasks:[]});
   const [user, setUser] = useState(null);
@@ -289,12 +293,29 @@ export default function App() {
 
   const navigate = (id) => { setView(id); setMenuOpen(false); };
 
-  useEffect(() => { loadAll(); }, []);
+  // Sesión segura con Supabase Auth: el perfil se busca por auth_id
+  const cargarPerfil = async (session) => {
+    if (!session) { setUser(null); setLoading(false); return; }
+    const { data: perfil } = await supabase.from('users').select(USER_COLS).eq('auth_id', session.user.id).maybeSingle();
+    if (!perfil) { await supabase.auth.signOut(); setUser(null); setLoading(false); alert('Tu cuenta no tiene acceso al CRM.'); return; }
+    await loadAll();
+    setUser(u => (u && u.id === perfil.id) ? u : toCamel(perfil));
+  };
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => cargarPerfil(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((ev, session) => {
+      if (ev === 'SIGNED_OUT') { setUser(null); setData({users:[],contacts:[],interactions:[],deals:[],tasks:[]}); }
+      if (ev === 'SIGNED_IN') cargarPerfil(session);
+    });
+    return () => sub.subscription.unsubscribe();
+    // eslint-disable-next-line
+  }, []);
+  const salir = async () => { await supabase.auth.signOut(); setUser(null); setMenuOpen(false); };
 
   const loadAll = async () => {
     setLoading(true);
     const [u, c, i, d, t] = await Promise.all([
-      supabase.from('users').select('*'),
+      supabase.from('users').select(USER_COLS),
       supabase.from('contacts').select('*'),
       supabase.from('interactions').select('*'),
       supabase.from('deals').select('*'),
@@ -470,16 +491,25 @@ export default function App() {
       id:            genId(),
       name:          form.name,
       email:         form.email,
-      password:      form.password || 'pass123',
       role:          form.role || 'comercial',
       lineaPermisos: form.lineaPermisos || ['inmobiliaria'],
       managerId:     form.managerId || null,
       descripcionRol: form.descripcionRol || null,
     });
-    const { data: rec, error } = await supabase.from('users').insert(payload).select().single();
-    if (!error) setData(d => ({ ...d, users: [...d.users, toCamel(rec)] }));
+    payload.email = String(payload.email || '').trim().toLowerCase();
+    const { data: rec, error } = await supabase.from('users').insert(payload).select(USER_COLS).single();
+    if (error) { alert(`Error al crear usuario:\n${error.message}`); return; }
+    setData(d => ({ ...d, users: [...d.users, toCamel(rec)] }));
+    await invitarUsuario(rec.id, rec.email);
+  };
+  const invitarUsuario = async (id, email) => {
+    const { data, error } = await supabase.functions.invoke('cuentas', { body: { action:'invitar', user_id:id } });
+    const r = data?.resultados?.[0];
+    if (error || data?.error || r?.error) alert(`No se pudo enviar la invitación: ${data?.error || r?.error || error?.message}`);
+    else alert(`Invitación enviada a ${email}. Recibirá un enlace para crear su contraseña.`);
   };
   const deleteUser = async (id) => {
+    await supabase.functions.invoke('cuentas', { body: { action:'baja', user_id:id } });
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (!error) setData(d => ({ ...d, users: d.users.filter(u => u.id !== id) }));
   };
@@ -492,7 +522,7 @@ export default function App() {
 
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Login users={data.users} onLogin={u=>{setUser(u);setView("dashboard");}} />;
+  if (!user) return <Login />;
 
   const canSee = l => ["admin","socio"].includes(user.role) || user.lineaPermisos?.includes(l);
   const vis = (user.role==="admin"||user.role==="socio") ? data.users.map(u=>u.id) : [user.id];
@@ -554,7 +584,7 @@ export default function App() {
               <div style={{fontSize:13,fontWeight:700,color:"white",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name}</div>
               <div className="mono" style={{fontSize:10,color:"#8FA2F0",textTransform:"uppercase",letterSpacing:".08em"}}>{user.role}</div>
             </span>
-            <button className="sidebar-label" onClick={()=>{setUser(null);setMenuOpen(false);}} style={{display:sidebar?"inline":"none",background:"none",border:"none",color:"#DCE3FF",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Salir</button>
+            <button className="sidebar-label" onClick={salir} style={{display:sidebar?"inline":"none",background:"none",border:"none",color:"#DCE3FF",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Salir</button>
           </div>
         </div>
       </div>
@@ -625,6 +655,7 @@ export default function App() {
             deals={data.deals}
             tasks={data.tasks}
             onAddUser={addUser}
+            onInvite={invitarUsuario}
             onDeleteUser={deleteUser}
             onSavePermisos={savePermisos}
           />}
@@ -634,13 +665,23 @@ export default function App() {
   );
 }
 
-function Login({users,onLogin}) {
+function Login() {
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
   const [err,setErr]=useState("");
-  const go=()=>{
-    const u=users.find(u=>u.email===email&&u.password===pass);
-    u?onLogin(u):setErr("Credenciales incorrectas");
+  const [busy,setBusy]=useState(false);
+  const [info,setInfo]=useState("");
+  const go=async()=>{
+    if(!email||!pass){setErr("Escribe tu email y tu contraseña");return;}
+    setBusy(true);setErr("");
+    const {error}=await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password:pass});
+    setBusy(false);
+    if(error) setErr(error.message.includes("Invalid")?"Email o contraseña incorrectos":error.message);
+  };
+  const olvide=async()=>{
+    if(!email){setErr("Escribe tu email y vuelve a pulsar «He olvidado mi contraseña»");return;}
+    await supabase.functions.invoke('cuentas',{body:{action:'olvide',email}});
+    setErr("");setInfo("Si el email está dado de alta, te hemos enviado un enlace para elegir una nueva contraseña.");
   };
   return (
     <div className="login-wrap" style={{minHeight:"100vh",display:"grid",gridTemplateColumns:"1.05fr 1fr",background:"#F6F5F1",fontFamily:"'DM Sans',sans-serif"}}>
@@ -664,7 +705,9 @@ function Login({users,onLogin}) {
           <div style={{marginBottom:16}}><label className="fl">Email</label><input className="fi" style={{height:48}} type="email" placeholder="tu@quenecesitashoy.es" value={email} onChange={e=>{setEmail(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} /></div>
           <div style={{marginBottom:22}}><label className="fl">Contraseña</label><input className="fi" style={{height:48}} type="password" placeholder="••••••••" value={pass} onChange={e=>{setPass(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} /></div>
           {err&&<p style={{color:"#dc2626",fontSize:13,marginBottom:14}}>{err}</p>}
-          <button className="btn-p" style={{width:"100%",height:52,fontSize:15}} onClick={go}>Entrar</button>
+          {info&&<p style={{color:"#00208F",fontSize:13,marginBottom:14}}>{info}</p>}
+          <button className="btn-p" style={{width:"100%",height:52,fontSize:15}} disabled={busy} onClick={go}>{busy?"Entrando…":"Entrar"}</button>
+          <button onClick={olvide} style={{background:"none",border:"none",color:"#00208F",fontSize:13,marginTop:14,cursor:"pointer",padding:0,textDecoration:"underline"}}>He olvidado mi contraseña</button>
           <p style={{fontSize:13,color:"#5B6178",marginTop:22}}>¿Problemas para entrar? Escribe a <a href="mailto:info@gespronet.es" style={{color:"#00208F",fontWeight:700}}>info@gespronet.es</a></p>
         </div>
       </div>
@@ -2004,7 +2047,7 @@ function Tasks({tasks,deals,contacts,user,onSaveTask,onDeleteTask,onToggleTask,o
   );
 }
 
-function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}) {
+function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos,onInvite}) {
   const [teamTab,setTeamTab]=useState("interno");
   const [modal,setModal]=useState(false);
   const [form,setForm]=useState({});
@@ -2058,6 +2101,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
                 </div>
                 <div style={{display:"flex",gap:4}}>
                   <button className="btn-g" style={{padding:"3px 7px",fontSize:11}} onClick={()=>{setEditP(u.id);setTmpP(u.lineaPermisos||[]);setTmpDesc(u.descripcionRol||"");}}>✏️</button>
+                  <button className="btn-g" style={{padding:"3px 9px",fontSize:11}} title="Enviar email para crear o restablecer la contraseña" onClick={()=>onInvite&&onInvite(u.id,u.email)}>{u.authId?"Reenviar acceso":"Enviar acceso"}</button>
                   <button onClick={()=>del(u.id)} style={{background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#fca5a5"}}>✕</button>
                 </div>
               </div>
@@ -2088,7 +2132,7 @@ function Team({users,contacts,deals,tasks,onAddUser,onDeleteUser,onSavePermisos}
         <div className="mb" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="mo">
             <h2 style={{fontSize:17,fontWeight:800,color:BRAND,marginBottom:16}}>Nuevo miembro</h2>
-            {[["name","Nombre *","text"],["email","Email *","email"],["password","Contraseña","text"]].map(([k,l,t])=>(
+            {[["name","Nombre *","text"],["email","Email *","email"]].map(([k,l,t])=>(
               <div key={k} style={{marginBottom:11}}><label className="fl">{l}</label><input className="fi" type={t} value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={k==="password"?"pass123":""} /></div>
             ))}
             <div style={{marginBottom:11}}><label className="fl">Rol</label>

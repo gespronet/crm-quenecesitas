@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './utils/supabase';
 import { ARRAS_HTML } from './mandatoPlantillas';
+import { PanelFirma } from './Firma';
 import { renderTpl, imprimirHTML, eur, fechaLarga, hoyISO, datosPropietario, datosInmueble, F, Bloque, VistaPrevia } from './Mandato';
 
 const masDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0,10); };
 
 // ─── Historial de contratos de arras del inmueble ────────────────────────────
-export function HistorialArras({ property, onNuevo, recarga }) {
+export function HistorialArras({ property, recarga, contacts, user }) {
   const [hist, setHist] = useState([]);
   useEffect(() => {
-    supabase.from('contratos_arras').select('id,referencia,fecha,datos,html,precio,importe_arras')
+    supabase.from('contratos_arras').select('id,referencia,fecha,datos,html,precio,importe_arras,vendedor_contact_id,comprador_contact_id,firmado_at')
       .eq('property_id', String(property.id)).order('created_at', { ascending:false })
       .then(({ data }) => setHist(data || []));
   }, [property.id, recarga]);
@@ -26,6 +27,7 @@ export function HistorialArras({ property, onNuevo, recarga }) {
           <span className="mono" style={{ fontSize:11, color:'#5B6178' }}>{fechaLarga(m.fecha)}</span>
           <button className="btn-g" style={{ padding:'5px 12px', fontSize:12 }}
             onClick={() => imprimirHTML(m.html || renderTpl(ARRAS_HTML, m.datos), `Arras ${m.referencia}`)}>Imprimir / PDF</button>
+          <PanelFirma tipo="arras" doc={m} contacts={contacts} user={user} />
         </div>
       ))}
     </div>
@@ -81,7 +83,7 @@ export function EditorArras({ property, user, contacts, onClose }) {
 
   const faltan = [
     !d.vendedor.nombre && 'vendedor', !d.vendedor.nif && 'NIF vendedor', !d.comprador.nombre && 'comprador', !d.comprador.nif && 'NIF comprador',
-    !d.arras.precio && 'precio', !d.arras.importe && 'importe de arras', !d.agente.dni && 'DNI del agente',
+    !d.arras.precio && 'precio', !d.arras.importe && 'importe de arras', 
     d.arras.condicion_hipoteca && !d.arras.importe_hipoteca && 'importe de la hipoteca',
   ].filter(Boolean);
 
@@ -163,11 +165,7 @@ export function EditorArras({ property, user, contacts, onClose }) {
           {parte('vendedor', vendId, setVendId, 'Parte vendedora')}
           {parte('comprador', compId, setCompId, 'Parte compradora')}
 
-          <Bloque t="Por Qué necesitas hoy (intermediaria)">
-            <F label="Agente" span>{inp('agente','nombre')}</F>
-            <F label="DNI">{inp('agente','dni')}</F>
-            <F label="Cargo">{inp('agente','cargo')}</F>
-          </Bloque>
+          {/* Agencia: firma mancomunada de los socios, fija en la plantilla */}
 
           <Bloque t="El inmueble">
             <F label="Dirección" span>{inp('inmueble','direccion')}</F>

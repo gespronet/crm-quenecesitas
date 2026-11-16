@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './utils/supabase';
 import { MANDATO_HTML, DESISTIMIENTO_HTML } from './mandatoPlantillas';
 import { EditorArras, HistorialArras } from './Arras';
+import { PanelFirma } from './Firma';
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -88,7 +89,7 @@ export default function TabMandato({ property, user, contacts }) {
   const [arras, setArras] = useState(false);
   const [recArras, setRecArras] = useState(0);
   const load = async () => {
-    const { data } = await supabase.from('mandatos').select('id,referencia,fecha,datos,html,creado_por,created_at')
+    const { data } = await supabase.from('mandatos').select('id,referencia,fecha,datos,html,creado_por,created_at,contact_id,firmado_at')
       .eq('property_id', String(property.id)).order('created_at', { ascending:false });
     setHist(data || []);
   };
@@ -116,10 +117,11 @@ export default function TabMandato({ property, user, contacts }) {
             <span className="mono" style={{ fontSize:11, color:'#5B6178' }}>{fechaLarga(m.fecha)}</span>
             <button className="btn-g" style={{ padding:'5px 12px', fontSize:12 }}
               onClick={() => imprimirHTML(m.html || renderTpl(MANDATO_HTML, m.datos), `Mandato ${m.referencia}`)}>Imprimir / PDF</button>
+            <PanelFirma tipo="mandato" doc={m} contacts={contacts} user={user} />
           </div>
         ))}
       </div>
-      <HistorialArras property={property} recarga={recArras} />
+      <HistorialArras property={property} recarga={recArras} contacts={contacts} user={user} />
     </div>
   );
 }
@@ -174,7 +176,7 @@ function EditorMandato({ property, user, contacts, onClose }) {
 
   const faltan = [
     !d.propiedad.nombre && 'nombre de la propiedad', !d.propiedad.nif && 'NIF/CIF de la propiedad',
-    !d.agente.dni && 'DNI del agente', !d.mandato.precio && 'precio', !d.inmueble.direccion && 'dirección del inmueble',
+     !d.mandato.precio && 'precio', !d.inmueble.direccion && 'dirección del inmueble',
   ].filter(Boolean);
 
   const guardar = async (imprimir) => {
@@ -242,11 +244,7 @@ function EditorMandato({ property, user, contacts, onClose }) {
             <F label="DNI firmante">{inp('propiedad','firmante_dni')}</F>
           </Bloque>
 
-          <Bloque t="Por Qué necesitas hoy">
-            <F label="Agente" span>{inp('agente','nombre')}</F>
-            <F label="DNI">{inp('agente','dni')}</F>
-            <F label="Cargo">{inp('agente','cargo')}</F>
-          </Bloque>
+          {/* Agencia: firma mancomunada de los socios, fija en la plantilla */}
 
           <Bloque t="El inmueble">
             <F label="Dirección" span>{inp('inmueble','direccion')}</F>
