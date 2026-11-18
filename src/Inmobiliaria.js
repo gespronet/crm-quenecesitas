@@ -34,6 +34,7 @@ const DOCS_OBLIGATORIOS = [
   { id:'Certificado catastral', info:'Descriptivo y gráfico. Comprueba que superficie y referencia coinciden con el Registro.' },
 ];
 const DOCS_ESPECIALES = [
+  { id:'Contrato de arras', info:'Cuando la operación es compartida y el contrato lo redacta la otra agencia o el notario.' },
   { id:'Certificado de deuda pendiente / cancelación de hipoteca', info:'Si hay hipoteca que se cancela en la firma.' },
   { id:'Estatutos y normas de la comunidad', info:'Para informar al comprador de las reglas internas.' },
   { id:'Últimas facturas de suministros', info:'Agua, luz y gas, para los cambios de titularidad.' },

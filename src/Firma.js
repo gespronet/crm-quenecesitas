@@ -66,9 +66,13 @@ export function PanelFirma({ tipo, doc, contacts, user }) {
                 <span style={{ color:'#5B6178' }}>{s.firmante_email}</span>
                 <span className="tag" style={{ background:e.bg, color:e.c, fontSize:10 }}>{e.l}{s.estado === 'firmado' ? ' · ' + fh(s.firmado_at) : ''}</span>
                 <span style={{ flex:1 }} />
+                {!s.rol.startsWith('socio_') && s.estado === 'firmado' && (
+                  s.dni_verificado === true ? <span className="tag" style={{ background:'#DCE3FF', color:'#00208F', fontSize:10 }}>DNI validado ✓</span>
+                  : s.dni_verif_token ? <a className="btn-a" style={{ padding:'3px 9px', fontSize:11, textDecoration:'none' }} href={`/?verificar_dni=${s.dni_verif_token}`} target="_blank" rel="noreferrer">Validar DNI</a> : null)}
+                {s.dni_verificado === false && s.estado !== 'firmado' && <span className="tag" style={{ background:'#fee2e2', color:'#dc2626', fontSize:10 }}>DNI rechazado</span>}
                 {s.dni_numero && <button className="btn-g" style={{ padding:'3px 9px', fontSize:11 }} onClick={() => verDni(s.token)}>Ver DNI</button>}
                 {s.estado !== 'firmado' && s.estado !== 'pendiente' && <>
-                  <button className="btn-g" style={{ padding:'3px 9px', fontSize:11 }} onClick={() => { navigator.clipboard?.writeText(`https://crm.quenecesitashoy.com/?firmar=${s.token}`); alert('Enlace copiado'); }}>Copiar enlace</button>
+                  <button className="btn-g" style={{ padding:'3px 9px', fontSize:11 }} onClick={() => { navigator.clipboard?.writeText(`https://crm.quenecesitashoy.es/?firmar=${s.token}`); alert('Enlace copiado'); }}>Copiar enlace</button>
                   <button className="btn-g" style={{ padding:'3px 9px', fontSize:11 }} disabled={!!busy} onClick={() => accion('reenviar', s.token, 'Recordatorio enviado')}>{busy === s.token + 'reenviar' ? '…' : 'Reenviar'}</button>
                   <button className="btn-g" style={{ padding:'3px 9px', fontSize:11, color:'#dc2626' }} disabled={!!busy} onClick={() => window.confirm('¿Anular esta solicitud de firma?') && accion('anular', s.token)}>Anular</button>
                 </>}
@@ -170,6 +174,7 @@ export function FirmaPublica({ token, css }) {
   const [codigo, setCodigo] = useState(''); const [codigoEnviado, setCodigoEnviado] = useState(false);
   const [dni, setDni] = useState({ numero:'', anverso:null, reverso:null });
   const [firma, setFirma] = useState(null); const [acepto, setAcepto] = useState(false);
+  const [origen, setOrigen] = useState({});
 
   const cargar = async () => {
     try {
@@ -184,7 +189,7 @@ export function FirmaPublica({ token, css }) {
   const verificar = () => run(async () => { const r = await firmaApi({ action:'verificar', token, codigo }); setPaso(r?.dni_ok ? 3 : 2); });
   const subirDni = () => run(async () => {
     if (!dni.anverso || !dni.reverso) throw new Error('Sube las dos caras del DNI.');
-    await firmaApi({ action:'dni', token, numero:dni.numero, anverso:dni.anverso, reverso:dni.reverso }); setPaso(3);
+    await firmaApi({ action:'dni', token, numero:dni.numero, anverso:dni.anverso, reverso:dni.reverso, origen }); setPaso(3);
   });
   const firmar = () => run(async () => { await firmaApi({ action:'firmar', token, firma, acepto }); await cargar(); setPaso(4); });
   const foto = async (k, file) => { if (!file) return; try { const u = await comprimir(file); setDni(d => ({ ...d, [k]: u })); } catch (e) { setMsg(e.message); } };
@@ -244,18 +249,27 @@ export function FirmaPublica({ token, css }) {
     {paso === 2 && (
       <div className="card" style={{ padding:24 }}>
         <h3 style={{ marginBottom:8 }}>Tu documento de identidad</h3>
-        <p style={{ fontSize:14, color:'#5B6178', marginBottom:14 }}>Haz una foto de las dos caras de tu DNI o NIE. Solo la verá Qué necesitas hoy para acreditar tu identidad.</p>
+        {info.motivo_dni && <div style={{ background:'#FFF4D6', borderRadius:'14px 14px 14px 0', padding:'10px 14px', marginBottom:12, fontSize:14 }}>No pudimos validar tu DNI anterior: {info.motivo_dni}</div>}
+        <p style={{ fontSize:14, color:'#5B6178', marginBottom:14 }}>Haz una foto de las dos caras de tu DNI o NIE, con buena luz y que se lea bien. Solo la verá Qué necesitas hoy para acreditar tu identidad.</p>
         <label className="fl">Número de DNI / NIE</label>
         <input className="fi" value={dni.numero} onChange={e => setDni(d => ({ ...d, numero:e.target.value.toUpperCase() }))} placeholder="12345678Z" style={{ marginBottom:14 }} />
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           {[['anverso','Cara delantera'],['reverso','Cara trasera']].map(([k, l]) => (
-            <label key={k} style={{ cursor:'pointer' }}>
+            <div key={k}>
               <div style={{ aspectRatio:'1.58', borderRadius:'14px 14px 14px 0', border: dni[k] ? 'none' : '1.5px dashed #C9CBD3', background: dni[k] ? `center/cover url(${dni[k]})` : 'white', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', fontSize:13, color:'#5B6178' }}>
-                {!dni[k] && <span>📷<br />{l}</span>}
+                {!dni[k] && <span>{l}</span>}
               </div>
-              <input type="file" accept="image/*" capture="environment" style={{ display:'none' }} onChange={e => foto(k, e.target.files[0])} />
-              {dni[k] && <span className="mono" style={{ fontSize:10, color:'#00208F' }}>✓ {l.toUpperCase()} · CAMBIAR</span>}
-            </label>
+              <div style={{ display:'flex', gap:6, marginTop:6 }}>
+                <label className="btn-p" style={{ flex:1, textAlign:'center', padding:'9px 6px', fontSize:13, cursor:'pointer' }}>
+                  📷 {dni[k] ? 'Repetir' : 'Hacer foto'}
+                  <input type="file" accept="image/*" capture="environment" style={{ display:'none' }} onChange={e => { foto(k, e.target.files[0]); setOrigen(o => ({ ...o, [k]:'camara' })); e.target.value=''; }} />
+                </label>
+                <label className="btn-g" style={{ padding:'9px 10px', fontSize:13, cursor:'pointer' }} title="Elegir una foto ya hecha">
+                  🖼️
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { foto(k, e.target.files[0]); setOrigen(o => ({ ...o, [k]:'galeria' })); e.target.value=''; }} />
+                </label>
+              </div>
+            </div>
           ))}
         </div>
         <button className="btn-p" disabled={busy || !dni.numero || !dni.anverso || !dni.reverso} onClick={subirDni} style={{ width:'100%', height:50, fontSize:15, marginTop:18 }}>{busy ? 'Subiendo…' : 'Continuar'}</button>
@@ -285,4 +299,58 @@ export function FirmaPublica({ token, css }) {
       </div>
     )}
   </>);
+}
+
+// ─── Página ?verificar_dni=TOKEN (revisión del DNI por los socios) ───────────
+export function VerificarDni({ vtoken, css }) {
+  const [d, setD] = useState(null); const [error, setError] = useState('');
+  const [motivo, setMotivo] = useState(''); const [busy, setBusy] = useState(false); const [hecho, setHecho] = useState('');
+  useEffect(() => { firmaApi({ action:'dni_revision', vtoken }).then(setD).catch(e => setError(e.message)); }, [vtoken]);
+  const resolver = async (ok) => {
+    if (!ok && !motivo.trim() && !window.confirm('¿Rechazar sin indicar el motivo? Se usará un texto genérico.')) return;
+    setBusy(true);
+    try { await firmaApi({ action:'dni_resolver', vtoken, ok, motivo, por:'socio' }); setHecho(ok ? 'validado' : 'rechazado'); }
+    catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+  const coincide = d && d.dni_esperado && String(d.dni_esperado).toUpperCase().replace(/[^0-9A-Z]/g,'') === String(d.dni_numero || '').toUpperCase();
+  return (
+    <div style={{ minHeight:'100vh', background:'#F6F5F1', padding:'24px 16px', fontFamily:"'DM Sans',sans-serif" }}>
+      <style>{css}</style>
+      <div style={{ maxWidth:760, margin:'0 auto' }}>
+        <div className="eyebrow">Verificación de identidad</div>
+        {error && <div className="card" style={{ padding:24 }}><p>{error}</p></div>}
+        {!d && !error && <p>Cargando…</p>}
+        {d && <>
+          <h1 style={{ fontFamily:"'Poppins',sans-serif", fontSize:26, letterSpacing:'-.03em', marginBottom:4 }}>{d.nombre}</h1>
+          <p style={{ color:'#5B6178', marginBottom:16 }}>{d.tipo} {d.referencia} · {d.rol} · {d.email}</p>
+          <div className="card" style={{ padding:20, marginBottom:14 }}>
+            <p style={{ fontSize:15 }}>DNI/NIE declarado: <b>{d.dni_numero || '—'}</b> · esperado en el documento: <b>{d.dni_esperado || '—'}</b>
+              {d.dni_esperado && <span className="tag" style={{ marginLeft:8, background: coincide ? '#DCE3FF' : '#fee2e2', color: coincide ? '#00208F' : '#dc2626' }}>{coincide ? 'Coincide' : 'No coincide'}</span>}</p>
+            <p style={{ fontSize:13, color:'#5B6178', marginTop:6 }}>Comprueba que es un documento real (no una captura ni una foto de pantalla), que se lee bien, que el número coincide y que la foto corresponde a la persona.</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:12, marginBottom:16 }}>
+            {[['Anverso', d.anverso], ['Reverso', d.reverso]].map(([l, u]) => (
+              <a key={l} href={u} target="_blank" rel="noreferrer" className="card" style={{ padding:10, display:'block' }}>
+                <div className="mono" style={{ fontSize:10, color:'#5B6178', marginBottom:6 }}>{l.toUpperCase()} · TOCA PARA AMPLIAR</div>
+                {u ? <img src={u} alt={l} style={{ width:'100%', borderRadius:'12px 12px 12px 0' }} /> : <p>Sin imagen</p>}
+              </a>
+            ))}
+          </div>
+          {hecho ? (
+            <div className="card" style={{ padding:20 }}><p style={{ fontSize:15 }}>{hecho === 'validado' ? '✓ DNI validado. Los socios ya pueden firmar el documento.' : 'DNI rechazado. Hemos pedido al cliente que lo vuelva a subir y firme de nuevo.'}</p></div>
+          ) : d.verificado === true ? (
+            <div className="card" style={{ padding:20 }}><p>Este DNI ya está validado.</p></div>
+          ) : (
+            <div className="card" style={{ padding:20 }}>
+              <button className="btn-p" disabled={busy} onClick={() => resolver(true)} style={{ width:'100%', height:50, fontSize:15, marginBottom:14 }}>✓ El DNI es correcto</button>
+              <label className="fl">Motivo del rechazo (se envía al cliente)</label>
+              <textarea className="fi" rows={2} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ej.: la foto está borrosa / no es un DNI / falta la cara trasera" />
+              <button className="btn-g" disabled={busy} onClick={() => resolver(false)} style={{ width:'100%', marginTop:8, color:'#dc2626', borderColor:'#fecaca' }}>Rechazar y pedir otra foto</button>
+            </div>
+          )}
+        </>}
+      </div>
+    </div>
+  );
 }

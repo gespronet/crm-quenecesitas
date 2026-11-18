@@ -5,7 +5,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAIL_URL = Deno.env.get("FIRMA_MAIL_URL") ?? "https://n8n.gespronet.cloud/webhook/quenecesitas-firma-email";
 const MAIL_SECRET = Deno.env.get("FIRMA_MAIL_SECRET") ?? "adaf519ec1b23107011d7caee05517adbbf31f707212b8e3";
-const BASE = Deno.env.get("FIRMA_BASE_URL") ?? "https://crm.quenecesitashoy.com/?firmar=";
+const BASE = Deno.env.get("FIRMA_BASE_URL") ?? "https://crm.quenecesitashoy.es/?firmar=";
 const AVISO = "anovo@quenecesitashoy.es";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const TABLA: Record<string, string> = { mandato: "mandatos", arras: "contratos_arras" };

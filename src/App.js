@@ -352,6 +352,7 @@ export default function App() {
       console.log('[saveContact:new] tipo:', normalizedForm.tipo, '| lineas para deals:', lineas);
       if (normalizedForm.tipo === 'prospecto' && lineas.length > 0) {
         for (const linea of lineas) {
+          if (linea === "inmobiliaria") continue; // el pipeline de inmobiliaria va por inmuebles, no por contactos
           const dealPayload = toSnake({
             id: genId(),
             contactId: contactId,
