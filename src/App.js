@@ -5,6 +5,7 @@ import logoNeg from "./assets/logo-principal-negativo.svg";
 import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase";
 import { ContactQuotes } from "./Productos";
 import EnergiaSection from "./EnergiaSection";
+import Llamadas from "./Llamadas";
 import AlarmaSection from "./AlarmaSection";
 import Inmobiliaria from "./Inmobiliaria";
 import VentaDirecta from "./VentaDirecta";
@@ -538,6 +539,7 @@ export default function App() {
     { id:"pipeline",     icon:"📋", label:"Pipeline" },
     { id:"tasks",        icon:"✅", label:"Tareas" },
     { id:"misemana",     icon:"📅", label:"Mi Semana" },
+    ...(canSee("energia")      ?[{ id:"llamadas",      icon:"📞", label:"Llamadas" }]:[]),
     ...(canSee("alarmas")      ?[{ id:"alarmas",       icon:"🔐", label:"Alarmas" }]:[]),
     ...(canSee("energia")      ?[{ id:"energia",       icon:"⚡", label:"Energía" }]:[]),
     ...(canSee("telefonia")    ?[{ id:"telefonia",     icon:"📱", label:"Telefonía" }]:[]),
@@ -648,6 +650,7 @@ export default function App() {
           {view==="venta_directa"&& <VentaDirecta user={user} users={data.users} contacts={data.contacts} />}
           {view==="npl"          && <NPL user={user} users={data.users} />}
           {view==="alarmas"      && <AlarmaSection user={user} users={data.users} contacts={data.contacts} />}
+          {view==="llamadas"     && <Llamadas user={user} users={data.users} onReload={loadAll} />}
           {view==="energia"      && <EnergiaSection user={user} users={data.users} contacts={data.contacts} />}
           {view==="telefonia"    && <TelefoniaSection user={user} users={data.users} contacts={data.contacts} />}
           {view==="team"      && <Team
