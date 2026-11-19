@@ -330,7 +330,7 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
     titulo: property.titulo||'', tipo_inmueble: property.tipo_inmueble||'',
     estado_venta: property.estado_venta||'Disponible', estado_conservacion: property.estado_conservacion||'',
     comercial_id: property.comercial_id||'', contact_id: property.contact_id||'',
-    precio: property.precio||'', precio_minimo: property.precio_minimo||'', precio_venta_acordado: property.precio_venta_acordado||'', comision_pct: property.comision_pct??'', reparto_pct: property.reparto_pct??100,
+    precio: property.precio||'', precio_minimo: property.precio_minimo||'', precio_venta_acordado: property.precio_venta_acordado||'', comision_pct: property.comision_pct??'', reparto_pct: property.reparto_pct??100, fecha_cierre_prevista: property.fecha_cierre_prevista||'', fecha_escritura: property.fecha_escritura||'',
     direccion: property.direccion||'', localidad: property.localidad||'',
     municipio: property.municipio||'', provincia: property.provincia||'',
     codigo_postal: property.codigo_postal||'', zona_barrio: property.zona_barrio||'',
@@ -376,6 +376,8 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
         precio_venta_acordado: numOrNull(form.precio_venta_acordado),
         comision_pct: numOrNull(form.comision_pct),
         reparto_pct: numOrNull(form.reparto_pct) ?? 100,
+        fecha_cierre_prevista: form.fecha_cierre_prevista || null,
+        fecha_escritura: form.fecha_escritura || null,
         superficie_construida: numOrNull(form.superficie_construida),
         superficie_util: numOrNull(form.superficie_util),
         superficie_parcela: numOrNull(form.superficie_parcela),
@@ -534,6 +536,14 @@ function TabDatos({ property, user, users, contacts, isAdmin, onSaved, onDeleted
               </div>
               {box('Beneficio estimado · precio de venta', est)}
               {box('Beneficio final · precio acordado', fin, true)}
+              <div>
+                <FL>Fecha prevista de escritura</FL>
+                <input className="fi" type="date" value={form.fecha_cierre_prevista||''} onChange={e => set('fecha_cierre_prevista',e.target.value)} />
+              </div>
+              <div>
+                <FL>Fecha de escritura (venta cerrada)</FL>
+                <input className="fi" type="date" value={form.fecha_escritura||''} onChange={e => set('fecha_escritura',e.target.value)} />
+              </div>
             </Grid2>
           </Sec>
         );

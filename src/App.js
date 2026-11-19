@@ -8,6 +8,7 @@ import EnergiaSection from "./EnergiaSection";
 import Llamadas from "./Llamadas";
 import Contabilidad from "./Contabilidad";
 import Documentos from "./Documentos";
+import Objetivos from "./Objetivos";
 import AlarmaSection from "./AlarmaSection";
 import Inmobiliaria from "./Inmobiliaria";
 import VentaDirecta from "./VentaDirecta";
@@ -538,6 +539,7 @@ export default function App() {
 
   const navItems = [
     { id:"dashboard",    icon:"📊", label:"Panel" },
+    ...(["admin","socio"].includes(user.role)?[{ id:"objetivos", icon:"🎯", label:"Objetivos" }]:[]),
     { id:"contacts",     icon:"👥", label:"Contactos" },
     { id:"pipeline",     icon:"📋", label:"Pipeline" },
     { id:"tasks",        icon:"✅", label:"Tareas" },
@@ -666,6 +668,7 @@ export default function App() {
           {view==="venta_directa"&& <VentaDirecta user={user} users={data.users} contacts={data.contacts} />}
           {view==="npl"          && <NPL user={user} users={data.users} />}
           {view==="alarmas"      && <AlarmaSection user={user} users={data.users} contacts={data.contacts} />}
+          {view==="objetivos" && ["admin","socio"].includes(user.role) && <Objetivos user={user} />}
           {view==="documentos"   && <Documentos />}
           {view==="contabilidad" && ["admin","socio"].includes(user.role) && <Contabilidad user={user} />}
           {view==="llamadas"     && <Llamadas user={user} users={data.users} onReload={loadAll} />}
