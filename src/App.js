@@ -6,6 +6,8 @@ import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase"
 import { ContactQuotes } from "./Productos";
 import EnergiaSection from "./EnergiaSection";
 import Llamadas from "./Llamadas";
+import Contabilidad from "./Contabilidad";
+import Documentos from "./Documentos";
 import AlarmaSection from "./AlarmaSection";
 import Inmobiliaria from "./Inmobiliaria";
 import VentaDirecta from "./VentaDirecta";
@@ -289,6 +291,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("dashboard");
   const [sidebar, setSidebar] = useState(true);
+  const [openGroups, setOpenGroups] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -539,6 +542,7 @@ export default function App() {
     { id:"pipeline",     icon:"📋", label:"Pipeline" },
     { id:"tasks",        icon:"✅", label:"Tareas" },
     { id:"misemana",     icon:"📅", label:"Mi Semana" },
+    { id:"documentos",   icon:"📁", label:"Documentos" },
     ...(canSee("energia")      ?[{ id:"llamadas",      icon:"📞", label:"Llamadas" }]:[]),
     ...(canSee("alarmas")      ?[{ id:"alarmas",       icon:"🔐", label:"Alarmas" }]:[]),
     ...(canSee("energia")      ?[{ id:"energia",       icon:"⚡", label:"Energía" }]:[]),
@@ -546,11 +550,12 @@ export default function App() {
     ...(canSee("inmobiliaria") ?[{ id:"inmobiliaria",  icon:"🏠", label:"Inmobiliaria" }]:[]),
     ...(canSee("venta_directa")?[{ id:"venta_directa", icon:"🏷️", label:"Venta Directa" }]:[]),
     ...(canSee("npl")          ?[{ id:"npl",           icon:"📊", label:"NPL" }]:[]),
+    ...(["admin","socio"].includes(user.role)?[{ id:"administracion", icon:"🏛️", label:"Administración", children:[{ id:"contabilidad", icon:"🧾", label:"Contabilidad" }] }]:[]),
     ...(["admin","socio"].includes(user.role)?[{ id:"team", icon:"👔", label:"Equipo" }]:[]),
   ];
 
-  { const li=navItems.findIndex(i=>["alarmas","energia","telefonia","inmobiliaria","venta_directa","npl"].includes(i.id)); if(li>=0) navItems[li]={...navItems[li],sec:"Líneas de negocio"}; const ti=navItems.findIndex(i=>i.id==="team"); if(ti>=0) navItems[ti]={...navItems[ti],sec:"Administración"}; }
-  const currentNavLabel = navItems.find(i=>i.id===view)?.label || "CRM";
+  { const li=navItems.findIndex(i=>["alarmas","energia","telefonia","inmobiliaria","venta_directa","npl"].includes(i.id)); if(li>=0) navItems[li]={...navItems[li],sec:"Líneas de negocio"}; const ti=navItems.findIndex(i=>i.id==="administracion"||i.id==="team"); if(ti>=0) navItems[ti]={...navItems[ti],sec:"Empresa"}; }
+  const currentNavLabel = navItems.flatMap(i=>[i,...(i.children||[])]).find(i=>i.id===view)?.label || "CRM";
 
   return (
     <div className="crm-root">
@@ -574,10 +579,21 @@ export default function App() {
         {navItems.map((item,i)=>(
           <div key={item.id}>
             {item.sec && <div className="side-sec sidebar-label" style={{display:sidebar?"block":"none"}}>{item.sec}</div>}
+            {item.children ? (()=>{ const act=item.children.some(c=>c.id===view); const op=openGroups[item.id]??act; return (<>
+              <button className={`nav ${act&&!op?"on":""}`} onClick={()=>{ if(!sidebar){ navigate(item.children[0].id); return; } setOpenGroups(g=>({...g,[item.id]:!op})); }} title={item.label}>
+                <span className="dot" />
+                <span className="sidebar-label" style={{whiteSpace:"nowrap",display:sidebar?"inline":"none",flex:1,textAlign:"left"}}>{item.label}</span>
+                <span className="sidebar-label" style={{display:sidebar?"inline":"none",fontSize:10,transition:"transform .2s",transform:op?"rotate(90deg)":"none"}}>▶</span>
+              </button>
+              {op && sidebar && item.children.map(c=>(
+                <button key={c.id} className={`nav ${view===c.id?"on":""}`} onClick={()=>navigate(c.id)} title={c.label} style={{paddingLeft:34,fontSize:13}}>
+                  <span className="sidebar-label" style={{whiteSpace:"nowrap"}}>{c.icon} {c.label}</span>
+                </button>))}
+            </>); })() : (
             <button className={`nav ${view===item.id?"on":""}`} onClick={()=>navigate(item.id)} title={item.label}>
               <span className="dot" />
               <span className="sidebar-label" style={{whiteSpace:"nowrap",display:sidebar?"inline":"none"}}>{item.label}</span>
-            </button>
+            </button>)}
           </div>
         ))}
         <div style={{marginTop:"auto",paddingTop:16}}>
@@ -650,6 +666,8 @@ export default function App() {
           {view==="venta_directa"&& <VentaDirecta user={user} users={data.users} contacts={data.contacts} />}
           {view==="npl"          && <NPL user={user} users={data.users} />}
           {view==="alarmas"      && <AlarmaSection user={user} users={data.users} contacts={data.contacts} />}
+          {view==="documentos"   && <Documentos />}
+          {view==="contabilidad" && ["admin","socio"].includes(user.role) && <Contabilidad user={user} />}
           {view==="llamadas"     && <Llamadas user={user} users={data.users} onReload={loadAll} />}
           {view==="energia"      && <EnergiaSection user={user} users={data.users} contacts={data.contacts} />}
           {view==="telefonia"    && <TelefoniaSection user={user} users={data.users} contacts={data.contacts} />}
