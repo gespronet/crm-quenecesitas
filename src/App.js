@@ -6,6 +6,7 @@ import { supabase, sanitizeFileName, compressFileIfPdf } from "./utils/supabase"
 import { ContactQuotes } from "./Productos";
 import EnergiaSection from "./EnergiaSection";
 import Llamadas from "./Llamadas";
+import Captacion from "./Captacion";
 import Contabilidad from "./Contabilidad";
 import Documentos from "./Documentos";
 import Objetivos from "./Objetivos";
@@ -550,13 +551,14 @@ export default function App() {
     ...(canSee("energia")      ?[{ id:"energia",       icon:"⚡", label:"Energía" }]:[]),
     ...(canSee("telefonia")    ?[{ id:"telefonia",     icon:"📱", label:"Telefonía" }]:[]),
     ...(canSee("inmobiliaria") ?[{ id:"inmobiliaria",  icon:"🏠", label:"Inmobiliaria" }]:[]),
+    ...(["admin","socio"].includes(user.role)?[{ id:"captacion",     icon:"🎯", label:"Captación" }]:[]),
     ...(canSee("venta_directa")?[{ id:"venta_directa", icon:"🏷️", label:"Venta Directa" }]:[]),
     ...(canSee("npl")          ?[{ id:"npl",           icon:"📊", label:"NPL" }]:[]),
     ...(["admin","socio"].includes(user.role)?[{ id:"administracion", icon:"🏛️", label:"Administración", children:[{ id:"contabilidad", icon:"🧾", label:"Contabilidad" }] }]:[]),
     ...(["admin","socio"].includes(user.role)?[{ id:"team", icon:"👔", label:"Equipo" }]:[]),
   ];
 
-  { const li=navItems.findIndex(i=>["alarmas","energia","telefonia","inmobiliaria","venta_directa","npl"].includes(i.id)); if(li>=0) navItems[li]={...navItems[li],sec:"Líneas de negocio"}; const ti=navItems.findIndex(i=>i.id==="administracion"||i.id==="team"); if(ti>=0) navItems[ti]={...navItems[ti],sec:"Empresa"}; }
+  { const li=navItems.findIndex(i=>["alarmas","energia","telefonia","inmobiliaria","captacion","venta_directa","npl"].includes(i.id)); if(li>=0) navItems[li]={...navItems[li],sec:"Líneas de negocio"}; const ti=navItems.findIndex(i=>i.id==="administracion"||i.id==="team"); if(ti>=0) navItems[ti]={...navItems[ti],sec:"Empresa"}; }
   const currentNavLabel = navItems.flatMap(i=>[i,...(i.children||[])]).find(i=>i.id===view)?.label || "CRM";
 
   return (
@@ -664,6 +666,7 @@ export default function App() {
           {view==="productos" && null}
           {view==="subastas" && null}
           {view==="inmobiliaria" && <Inmobiliaria user={user} contacts={data.contacts} users={data.users} />}
+          {view==="captacion" && ["admin","socio"].includes(user.role) && <Captacion user={user} users={data.users} />}
           {view==="misemana"     && <MiSemana user={user} />}
           {view==="venta_directa"&& <VentaDirecta user={user} users={data.users} contacts={data.contacts} />}
           {view==="npl"          && <NPL user={user} users={data.users} />}
