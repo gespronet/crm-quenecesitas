@@ -1,0 +1,14 @@
+{
+  "appId": "es.quenecesitashoy.avisos",
+  "appName": "queNECESITAS Avisos",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#00208F"
+    }
+  }
+}
