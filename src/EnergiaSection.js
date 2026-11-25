@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, compressFileIfPdf } from './utils/supabase';
+import ExtraccionFactura from './ExtraccionFactura';
 
 const BRAND = '#00208F';
 const eurE = v => (v == null || v === '' || isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
@@ -75,6 +76,8 @@ export default function EnergiaSection({ user, users, contacts }) {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ estado:'', comercial:'' });
+  const [extraContacts, setExtraContacts] = useState([]);
+  const allContacts = [...contacts, ...extraContacts.filter(x => !contacts.some(c => c.id === x.id))];
 
   const admin = isAdminSocio(user);
 
@@ -129,14 +132,14 @@ export default function EnergiaSection({ user, users, contacts }) {
 
   if (selected) {
     return (
-      <FichaProceso proceso={selected} user={user} users={users} contacts={contacts} admin={admin}
+      <FichaProceso proceso={selected} user={user} users={users} contacts={allContacts} onContactCreated={c => setExtraContacts(x => [...x, c])} admin={admin}
         onBack={() => setSelectedId(null)} onSaved={handleSaved} onDeleted={handleDeleted} />
     );
   }
 
   if (selectedId === 'new') {
     return (
-      <FichaProceso proceso={null} user={user} users={users} contacts={contacts} admin={admin}
+      <FichaProceso proceso={null} user={user} users={users} contacts={allContacts} onContactCreated={c => setExtraContacts(x => [...x, c])} admin={admin}
         onBack={() => setSelectedId(null)} onSaved={handleSaved} onDeleted={handleDeleted} />
     );
   }
@@ -271,7 +274,7 @@ export default function EnergiaSection({ user, users, contacts }) {
 
 // ─── Ficha de proceso (4 pestañas) ───────────────────────────────────────────
 
-function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, onDeleted }) {
+function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, onDeleted, onContactCreated }) {
   const isNew = !proceso;
   const [tab, setTab] = useState('factura');
   const [proc, setProc] = useState(proceso);
@@ -322,7 +325,7 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
 
       {tab === 'factura' && (
         <TabFactura proceso={proc} isNew={isNew} user={user} users={users} contacts={contacts} admin={admin} canEdit={canEdit}
-          onSaved={handleSaved} onDeleted={onDeleted} />
+          onSaved={handleSaved} onDeleted={onDeleted} onContactCreated={onContactCreated} />
       )}
       {tab === 'opciones' && proc && (
         <TabOpciones proceso={proc} canEdit={canEdit} onSaved={handleSaved} />
@@ -339,7 +342,9 @@ function FichaProceso({ proceso, user, users, contacts, admin, onBack, onSaved, 
 
 // ─── Tab 1: Factura ───────────────────────────────────────────────────────────
 
-function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onSaved, onDeleted }) {
+function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, canEdit, onSaved, onDeleted, onContactCreated }) {
+  // FichaProceso mantiene isNew=true tras crear el proceso; aquí manda que ya exista
+  const isNew = isNewProp && !proceso;
   const initForm = () => proceso ? {
     contact_id: proceso.contact_id||'', tipo_suministro: proceso.tipo_suministro||'luz',
     cups: proceso.cups||'', tarifa_actual: proceso.tarifa_actual||'2.0TD',
@@ -446,6 +451,13 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleExtraccionAplicada = (upd, contactoNuevo) => {
+    if (contactoNuevo && onContactCreated) onContactCreated(contactoNuevo);
+    setForm(f => ({ ...f, contact_id: upd.contact_id || '', cups: upd.cups || '', tarifa_actual: upd.tarifa_actual || f.tarifa_actual,
+      comercializadora_actual: upd.comercializadora_actual || '', direccion_suministro: upd.direccion_suministro || '', tipo_suministro: 'luz' }));
+    onSaved(upd);
   };
 
   const handleEnviarEstudio = async () => {
@@ -606,9 +618,16 @@ function TabFactura({ proceso, isNew, user, users, contacts, admin, canEdit, onS
             <a href={proceso.factura_url} target="_blank" rel="noreferrer" style={{ color:BRAND, fontWeight:700 }}>📄 Ver factura actual</a>
           </p>
         )}
+        {canEdit && form.tipo_suministro === 'luz' && (
+          <div style={{ marginBottom:16 }}>
+            <ExtraccionFactura proceso={proceso} user={user}
+              ensureProceso={() => (isNew ? handleSave() : Promise.resolve(proceso))}
+              onApplied={handleExtraccionAplicada} />
+          </div>
+        )}
         {canEdit && (
           <div>
-            <FL>{proceso?.factura_url ? 'Reemplazar factura (PDF)' : 'Subir factura (PDF)'}</FL>
+            <FL>{proceso?.factura_url ? 'Reemplazar factura (PDF)' : 'Subir factura (PDF) sin analizar'}</FL>
             <input type="file" accept=".pdf" disabled={uploading} onChange={handleFacturaChange} />
             {uploading && <p style={{ fontSize:12, color:'#8A8FA3', marginTop:6 }}>Subiendo...</p>}
             {!uploading && uploadOk && <p style={{ fontSize:12, color:'#10b981', fontWeight:700, marginTop:6 }}>✅ Factura subida</p>}
