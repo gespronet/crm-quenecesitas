@@ -45,7 +45,7 @@ export const SCHEMA = {
         cnae: txt,
         tarifa_acceso: {
           type: ["string", "null"],
-          enum: ["2.0TD", "3.0TD", "6.1TD", "6.2TD", "otra", null],
+          enum: ["2.0TD", "3.0TD", "6.1TD", "6.2TD", "6.3TD", "6.4TD", "otra", null],
         },
         potencias_kw: periodos,
       },

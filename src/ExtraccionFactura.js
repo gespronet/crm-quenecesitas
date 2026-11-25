@@ -6,7 +6,6 @@ const BUCKET = 'energia-facturas';
 const PERIODOS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
 const LETRAS = 'TRWAGMYFPDXBNJZSQVHLCKE';
 
-const genId = () => crypto.randomUUID();
 const num = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const eur = v => (v == null || isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -141,90 +140,81 @@ export default function ExtraccionFactura({ proceso, ensureProceso, user, onAppl
   const duplicada = !!res?.existente?.factura_duplicada;
   const cupsNorm = normalizaCups(f?.cups);
   const cupsRevisar = cupsNorm && !cupsLetrasOk(cupsNorm);
-  const tarifaSoportada = ['2.0TD', '3.0TD'].includes(f?.tarifa);
+  const tarifaSoportada = ['2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD'].includes(f?.tarifa);
   const puedeGuardar = fase === 'revision' && revisado && !duplicada && cupsNorm && tarifaSoportada && (!cupsRevisar || forzarCups)
     && (contactoModo === 'nuevo' ? !!f.nombre : !!contactoId);
 
+  // Guarda contacto + suministro + factura + proceso en una sola transacción
+  // (función energia_guardar_extraccion, migración 004): si algo falla no queda nada a medias.
   const guardar = async () => {
     setFase('guardando'); setError('');
     const d = res.datos;
     try {
-      // 1) Contacto
-      let cId = contactoId, contactoNuevo = null;
-      if (contactoModo === 'nuevo') {
-        const esEmpresa = f.tipoCliente === 'empresa';
-        cId = genId();
-        const row = {
-          id: cId, name: f.nombre, tipo: 'prospecto', tipo_cliente: esEmpresa ? 'empresa' : 'particular', linea: ['energia'],
-          origen: 'Factura energía', comercial_id: user.id, dni_cif: esEmpresa ? null : f.nif || null,
-          direccion: f.direccionFiscal || null, localidad: f.localidad || null, provincia: f.provincia || null, codigo_postal: f.cp || null,
-          ...(esEmpresa ? { empresa: f.nombre, empresa_razon_social: f.nombre, empresa_cif: f.nif || null, empresa_direccion: f.direccionFiscal || null } : {}),
-          created_at: new Date().toISOString().slice(0, 10),
-        };
-        const { error } = await supabase.from('contacts').insert(row);
-        if (error) throw new Error(`Contacto: ${error.message}`);
-        contactoNuevo = { id: cId, name: f.nombre, phone: null };
+      const esEmpresa = f.tipoCliente === 'empresa';
+      const nombreCom = (f.comercializadora || '').trim();
+      let comercId = null;
+      if (nombreCom) {
+        const { data: comerc } = await supabase.from('energia_comercializadoras').select('id').ilike('nombre', `%${nombreCom}%`).limit(1);
+        comercId = comerc?.[0]?.id || null;
       }
 
-      // 2) Suministro (por CUPS; si existe se actualiza)
-      const cups20 = cupsNorm.slice(0, 20);
-      const { data: ya } = await supabase.from('energia_cups').select('id').ilike('codigo_cups', `${cups20}%`).limit(1);
-      let { data: comerc } = await supabase.from('energia_comercializadoras').select('id').ilike('nombre', `%${(f.comercializadora || '').trim()}%`).limit(1);
-      if (!f.comercializadora.trim()) comerc = null;
-
-      const sumRow = {
-        codigo_cups: cupsNorm, titular: f.nombre || null, nif: f.nif || null, direccion: f.direccion || null,
-        poblacion: f.localidad || null, provincia: f.provincia || null, codigo_postal: f.cp || null,
-        tarifa: f.tarifa, distribuidora: f.distribuidora || null, cnae: f.cnae || null, direccion_fiscal: f.direccionFiscal || null,
-        tipo_cliente: f.tipoCliente, tipo_suministro: 'luz', contact_id: cId,
-        comercializadora_actual_id: comerc?.[0]?.id || null, producto_actual: f.producto || null, tipo_producto: f.tipoProducto,
-        permanencia: f.permanencia, permanencia_hasta: f.sinPenalizacionHasta || null,
-        fecha_fin_contrato: f.fechaFin || null, fecha_fin_origen: f.fechaFin ? 'factura' : null,
-      };
-      let cupsId;
-      if (ya?.length) {
-        cupsId = ya[0].id;
-        const { error } = await supabase.from('energia_cups').update(sumRow).eq('id', cupsId);
-        if (error) throw new Error(`Suministro: ${error.message}`);
-      } else {
-        const { data, error } = await supabase.from('energia_cups').insert(sumRow).select('id').single();
-        if (error) throw new Error(`Suministro: ${error.message}`);
-        cupsId = data.id;
-      }
-
-      // 3) Factura
       const pot = {}; PERIODOS.forEach(p => { pot[p] = num(f.potencias[p]); });
       const consumos = {}, maxim = {};
       PERIODOS.forEach(p => { if (d.consumos_kwh?.[p] != null) consumos[p] = d.consumos_kwh[p]; if (d.maximetros_kw?.[p] != null) maxim[p] = d.maximetros_kw[p]; });
       const lineas = d.lineas || [];
+      const suma = tipo => lineas.filter(l => l.tipo === tipo).reduce((s, l) => s + (Number(l.importe) || 0), 0);
       const sumaPuntual = lineas.filter(l => l.recurrente === false).reduce((s, l) => s + (Number(l.importe) || 0), 0);
       const base = num(f.base);
-      const factRow = {
-        cups_id: cupsId, numero_factura: f.numero || null, fecha_factura: f.fechaEmision || null,
-        periodo_inicio: f.periodoInicio || null, periodo_fin: f.periodoFin || null, dias: num(f.dias),
-        importe_total: num(f.total), base_imponible: base, iva_importe: d.factura?.iva_importe ?? null,
-        importe_recurrente: base == null ? null : Math.round((base - sumaPuntual) * 100) / 100,
-        potencias_contratadas: pot, consumos, maximetros: maxim, precios: preciosDesdeLineas(lineas), lineas,
-        alquiler_equipo: lineas.filter(l => l.tipo === 'alquiler_equipo').reduce((s, l) => s + (Number(l.importe) || 0), 0),
-        bono_social: lineas.filter(l => l.tipo === 'bono_social').reduce((s, l) => s + (Number(l.importe) || 0), 0),
-        comercializadora_id: comerc?.[0]?.id || null, comercializadora_nombre: f.comercializadora || null, producto: f.producto || null,
-        lectura_estimada: !!d.factura?.lectura_estimada, idioma: d.idioma || null, confianza: d.confianza ?? null,
-        extraccion: { datos: d, avisos: res.avisos }, archivo_bucket: BUCKET, archivo_path: archivo.path,
-        estado_validacion: 'validada', validada_at: new Date().toISOString(),
-      };
-      const { data: fact, error: eF } = await supabase.from('energia_facturas').insert(factRow).select('id').single();
-      if (eF) throw new Error(`Factura: ${eF.message}`);
 
-      // 4) Proceso. La URL firmada (1 año) mantiene vivo el envío existente al partner (n8n) con bucket privado.
+      // URL firmada (1 año): mantiene vivo el envío existente al partner (n8n) con el bucket privado.
       const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(archivo.path, 60 * 60 * 24 * 365);
-      const { data: upd, error: eP } = await supabase.from('energia_procesos').update({
-        contact_id: cId, cups: cupsNorm, tarifa_actual: f.tarifa, comercializadora_actual: f.comercializadora || null,
-        direccion_suministro: [f.direccion, f.cp, f.localidad].filter(Boolean).join(', ') || null,
-        cups_id: cupsId, factura_id: fact.id, factura_url: signed?.signedUrl || null, tipo_suministro: 'luz',
-      }).eq('id', procId).select('*, contacts(name, phone), users(name)').single();
+
+      const p = {
+        proceso_id: procId,
+        contact_id: contactoModo === 'existente' ? contactoId : null,
+        contacto: contactoModo === 'nuevo' ? {
+          name: f.nombre, tipo_cliente: esEmpresa ? 'empresa' : 'particular', comercial_id: user.id,
+          dni_cif: esEmpresa ? null : f.nif || null,
+          direccion: f.direccionFiscal || null, localidad: f.localidad || null, provincia: f.provincia || null, codigo_postal: f.cp || null,
+          ...(esEmpresa ? { empresa: f.nombre, empresa_razon_social: f.nombre, empresa_cif: f.nif || null, empresa_direccion: f.direccionFiscal || null } : {}),
+        } : null,
+        suministro: {
+          codigo_cups: cupsNorm, titular: f.nombre || null, nif: f.nif || null, direccion: f.direccion || null,
+          poblacion: f.localidad || null, provincia: f.provincia || null, codigo_postal: f.cp || null,
+          tarifa: f.tarifa, distribuidora: f.distribuidora || null, cnae: f.cnae || null, direccion_fiscal: f.direccionFiscal || null,
+          tipo_cliente: f.tipoCliente, comercializadora_actual_id: comercId, producto_actual: f.producto || null,
+          tipo_producto: f.tipoProducto, permanencia: f.permanencia, permanencia_hasta: f.sinPenalizacionHasta || null,
+          fecha_fin_contrato: f.fechaFin || null, fecha_fin_origen: f.fechaFin ? 'factura' : null,
+        },
+        factura: {
+          numero_factura: f.numero || null, fecha_factura: f.fechaEmision || null,
+          periodo_inicio: f.periodoInicio || null, periodo_fin: f.periodoFin || null, dias: num(f.dias),
+          importe_total: num(f.total), base_imponible: base, iva_importe: d.factura?.iva_importe ?? null,
+          importe_recurrente: base == null ? null : Math.round((base - sumaPuntual) * 100) / 100,
+          potencias_contratadas: pot, consumos, maximetros: maxim, precios: preciosDesdeLineas(lineas), lineas,
+          alquiler_equipo: suma('alquiler_equipo'), bono_social: suma('bono_social'),
+          comercializadora_id: comercId, comercializadora_nombre: nombreCom || null, producto: f.producto || null,
+          lectura_estimada: !!d.factura?.lectura_estimada, idioma: d.idioma || null, confianza: d.confianza ?? null,
+          extraccion: { datos: d, avisos: res.avisos }, archivo_bucket: BUCKET, archivo_path: archivo.path,
+        },
+        proceso: {
+          tarifa_actual: f.tarifa, comercializadora_actual: nombreCom || null,
+          direccion_suministro: [f.direccion, f.cp, f.localidad].filter(Boolean).join(', ') || null,
+          factura_url: signed?.signedUrl || null,
+        },
+      };
+
+      const { data: r, error: eG } = await supabase.rpc('energia_guardar_extraccion', { p });
+      if (eG) {
+        if (/energia_facturas_cups_numero_uq/.test(eG.message)) throw new Error('Esta factura ya está cargada en el CRM.');
+        throw new Error(eG.message);
+      }
+
+      const { data: upd, error: eP } = await supabase.from('energia_procesos')
+        .select('*, contacts(name, phone), users(name)').eq('id', procId).single();
       if (eP) throw new Error(`Proceso: ${eP.message}`);
 
-      onApplied(upd, contactoNuevo);
+      onApplied(upd, r?.contacto_nuevo ? { id: r.contact_id, name: f.nombre, phone: null } : null);
       setFase('hecho');
     } catch (err) {
       setError(err.message || String(err));
@@ -296,7 +286,7 @@ export default function ExtraccionFactura({ proceso, ensureProceso, user, onAppl
         <Campo label="CUPS"><input className="fi" value={f.cups} onChange={e => set('cups', e.target.value)} /></Campo>
         <Campo label="Tarifa de acceso">
           <select className="fi" value={f.tarifa} onChange={e => set('tarifa', e.target.value)}>
-            {['2.0TD', '3.0TD', '6.1TD', '6.2TD', 'otra'].map(t => <option key={t} value={t}>{t}</option>)}
+            {['2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD', 'otra'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </Campo>
         <Campo label="Dirección del suministro"><input className="fi" value={f.direccion} onChange={e => set('direccion', e.target.value)} /></Campo>
@@ -306,7 +296,7 @@ export default function ExtraccionFactura({ proceso, ensureProceso, user, onAppl
         <Campo label="Distribuidora"><input className="fi" value={f.distribuidora} onChange={e => set('distribuidora', e.target.value)} /></Campo>
         <Campo label="CNAE"><input className="fi" value={f.cnae} onChange={e => set('cnae', e.target.value)} /></Campo>
       </div>
-      {!tarifaSoportada && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 6 }}>El CRM solo guarda suministros 2.0TD y 3.0TD por ahora.</p>}
+      {!tarifaSoportada && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 6 }}>Elige la tarifa de acceso que figura en la factura.</p>}
       {cupsRevisar && (
         <label style={{ display: 'block', fontSize: 12, color: '#92400e', marginTop: 8 }}>
           <input type="checkbox" checked={forzarCups} onChange={e => setForzarCups(e.target.checked)} /> Las letras de control del CUPS no cuadran; lo he comprobado con la factura y es correcto.
