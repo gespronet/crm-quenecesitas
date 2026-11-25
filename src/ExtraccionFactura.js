@@ -1,3 +1,4 @@
+/* global BigInt */
 import { useState } from 'react';
 import { supabase, compressFileIfPdf, sanitizeFileName } from './utils/supabase';
 
