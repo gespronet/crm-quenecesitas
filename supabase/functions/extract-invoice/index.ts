@@ -57,31 +57,41 @@ Deno.serve(async (req) => {
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
       : { type: "image", source: { type: "base64", media_type: mime, data: b64 } };
 
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: Deno.env.get("EXTRACT_MODEL") ?? "claude-sonnet-5-5",
-        max_tokens: 8000,
-        system: SYSTEM_PROMPT,
-        tools: [{ name: TOOL_NAME, description: "Registra los datos de la factura", input_schema: SCHEMA }],
-        tool_choice: { type: "tool", name: TOOL_NAME },
-        messages: [{
-          role: "user",
-          content: [bloque, { type: "text", text: "Extrae los datos de esta factura de electricidad." }],
-        }],
-      }),
-    });
-    if (!r.ok) {
-      console.error("anthropic", r.status, await r.text());
-      return json({ error: "Falló la lectura de la factura. Reintenta en un momento." }, 502);
+    // El modelo no admite tool_choice forzado: se ofrece la herramienta en modo "auto" y el prompt
+    // obliga a usarla. Si responde sin llamarla, se reintenta una vez insistiendo.
+    const pedir = async (extra: string) => {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: Deno.env.get("EXTRACT_MODEL") ?? "claude-sonnet-5-5",
+          max_tokens: 8000,
+          system: SYSTEM_PROMPT,
+          tools: [{ name: TOOL_NAME, description: "Registra los datos de la factura", input_schema: SCHEMA }],
+          tool_choice: { type: "auto" },
+          messages: [{
+            role: "user",
+            content: [bloque, { type: "text", text: `Extrae los datos de esta factura de electricidad llamando a la herramienta ${TOOL_NAME}.${extra}` }],
+          }],
+        }),
+      });
+      if (!r.ok) {
+        console.error("anthropic", r.status, await r.text());
+        return null;
+      }
+      return await r.json();
+    };
+    let resp = await pedir("");
+    let uso = resp?.content?.find((c: { type: string }) => c.type === "tool_use");
+    if (resp && !uso) {
+      resp = await pedir(" Responde únicamente con la llamada a la herramienta, sin texto.");
+      uso = resp?.content?.find((c: { type: string }) => c.type === "tool_use");
     }
-    const resp = await r.json();
-    const uso = resp.content?.find((c: { type: string }) => c.type === "tool_use");
+    if (!resp) return json({ error: "Falló la lectura de la factura. Reintenta en un momento." }, 502);
     if (!uso) return json({ error: "No se obtuvo ningún dato de la factura" }, 502);
 
     const { avisos, datos } = validar(uso.input);
