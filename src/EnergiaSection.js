@@ -363,6 +363,8 @@ function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, c
   const [uploading, setUploading] = useState(false);
   const [uploadOk, setUploadOk] = useState(false);
   const [sendError, setSendError] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [fechaManual, setFechaManual] = useState('');
   const [cSearch, setCSearch] = useState('');
   const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -494,6 +496,22 @@ function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, c
     }
   };
 
+  // Registro manual: el estudio ya se envió al partner por otra vía (email, WhatsApp…) en una fecha anterior.
+  const handleEnvioManual = async () => {
+    if (!fechaManual) return;
+    if (fechaManual > today()) { alert('La fecha no puede ser futura'); return; }
+    setSending(true);
+    setSendError(false);
+    const { data, error } = await supabase.from('energia_procesos')
+      .update({ estado:'enviada_partner', fecha_envio_partner: fechaManual, fecha_solicitud_estudio: new Date(`${fechaManual}T12:00:00`).toISOString() })
+      .eq('id', proceso.id)
+      .select('*, contacts(name, phone), users(name)').single();
+    setSending(false);
+    if (error) { alert(`Error: ${error.message}`); return; }
+    setManualOpen(false);
+    onSaved(data);
+  };
+
   const handleDelete = async () => {
     if (!window.confirm('¿Eliminar este suministro? No se puede deshacer.')) return;
     setDeleting(true);
@@ -505,8 +523,10 @@ function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, c
   const selCon = contacts.find(c => c.id === form.contact_id);
   const filtCon = cSearch ? contacts.filter(c => c.name?.toLowerCase().includes(cSearch.toLowerCase())).slice(0,15) : [];
 
+  const yaEnviado = ['enviada_partner','opciones_recibidas','seleccionada','docs_solicitados','contratado','seguimiento'].includes(proceso?.estado);
   const puedeEnviarEstudio = !isNew && proceso && form.contact_id && proceso.cups && proceso.direccion_suministro
-    && proceso.factura_url && !['enviada_partner','opciones_recibidas','seleccionada','docs_solicitados','contratado','seguimiento'].includes(proceso.estado);
+    && proceso.factura_url && !yaEnviado;
+  const puedeMarcarManual = !isNew && proceso && canEdit && !yaEnviado && !proceso.fecha_envio_partner;
 
   return (
     <div>
@@ -657,6 +677,20 @@ function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, c
                 </button>
               )}
             </div>
+            {puedeMarcarManual && !manualOpen && (
+              <button type="button" onClick={() => { setFechaManual(today()); setManualOpen(true); }}
+                style={{ border:'none', background:'none', color:BRAND, fontSize:12, fontWeight:700, cursor:'pointer', padding:0, textDecoration:'underline' }}>
+                Ya lo envié antes · registrar fecha
+              </button>
+            )}
+            {manualOpen && (
+              <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
+                <span style={{ fontSize:12, color:'#5B6178' }}>Enviado al partner el</span>
+                <input type="date" className="fi" style={{ width:150 }} value={fechaManual} max={today()} onChange={e => setFechaManual(e.target.value)} />
+                <button type="button" className="btn-g" onClick={handleEnvioManual} disabled={sending || !fechaManual}>{sending ? 'Guardando...' : 'Guardar'}</button>
+                <button type="button" onClick={() => setManualOpen(false)} style={{ border:'none', background:'none', color:'#8A8FA3', fontSize:12, cursor:'pointer' }}>Cancelar</button>
+              </div>
+            )}
             {sendError && <span style={{ fontSize:12, color:'#dc2626', fontWeight:700 }}>❌ Error al enviar. Inténtalo de nuevo.</span>}
             {proceso?.fecha_solicitud_estudio && (
               <span className="tag" style={{ background:'#d1fae5', color:'#10b981', fontSize:12, padding:'5px 12px', fontWeight:700 }}>
@@ -673,6 +707,19 @@ function TabFactura({ proceso, isNew: isNewProp, user, users, contacts, admin, c
 // ─── Tab 2: Opciones del partner ─────────────────────────────────────────────
 
 function TabOpciones({ proceso, canEdit, onSaved }) {
+  const [guardandoFecha, setGuardandoFecha] = useState(false);
+  // Fecha del envío al partner editable a mano (envíos hechos por email, WhatsApp… antes de usar el CRM).
+  const guardarFechaEnvio = async (fecha) => {
+    if (fecha && fecha > new Date().toISOString().slice(0, 10)) { alert('La fecha no puede ser futura'); return; }
+    setGuardandoFecha(true);
+    const cambios = { fecha_envio_partner: fecha || null, fecha_solicitud_estudio: fecha ? new Date(`${fecha}T12:00:00`).toISOString() : null };
+    if (fecha && ['factura_recibida', null, undefined, ''].includes(proceso.estado)) cambios.estado = 'enviada_partner';
+    const { data, error } = await supabase.from('energia_procesos').update(cambios).eq('id', proceso.id)
+      .select('*, contacts(name, phone), users(name)').single();
+    setGuardandoFecha(false);
+    if (error) { alert(`Error: ${error.message}`); return; }
+    onSaved(data);
+  };
   const [rows, setRows] = useState(() => Array.isArray(proceso.opciones_partner) ? proceso.opciones_partner.map(o => ({ ...EMPTY_OPCION, ...o })) : []);
   const [saving, setSaving] = useState(false);
 
@@ -708,9 +755,12 @@ function TabOpciones({ proceso, canEdit, onSaved }) {
   return (
     <div>
       <Sec title="Envío al partner">
-        <p style={{ fontSize:12, color:'#5B6178' }}>
-          {proceso.fecha_envio_partner ? `Enviada al partner el ${proceso.fecha_envio_partner}` : 'Todavía no se ha registrado el envío al partner.'}
-        </p>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <span style={{ fontSize:12, color:'#5B6178' }}>{proceso.fecha_envio_partner ? 'Enviada al partner el' : 'Todavía no se ha registrado el envío. Si ya se envió, indica la fecha:'}</span>
+          <input type="date" className="fi" style={{ width:160 }} disabled={!canEdit || guardandoFecha} max={new Date().toISOString().slice(0, 10)}
+            value={proceso.fecha_envio_partner || ''} onChange={e => guardarFechaEnvio(e.target.value)} />
+          {guardandoFecha && <span style={{ fontSize:12, color:'#8A8FA3' }}>Guardando…</span>}
+        </div>
       </Sec>
 
       <Sec title="Opciones recibidas">
