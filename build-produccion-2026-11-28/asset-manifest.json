@@ -1,0 +1,28 @@
+{
+  "files": {
+    "main.css": "/static/css/main.e6c13ad2.css",
+    "main.js": "/static/js/main.b99a14f8.js",
+    "static/js/389.dd35fef0.chunk.js": "/static/js/389.dd35fef0.chunk.js",
+    "static/js/105.660c0903.chunk.js": "/static/js/105.660c0903.chunk.js",
+    "static/js/453.e5a36781.chunk.js": "/static/js/453.e5a36781.chunk.js",
+    "static/js/239.ccaa22b2.chunk.js": "/static/js/239.ccaa22b2.chunk.js",
+    "static/js/977.26da1dca.chunk.js": "/static/js/977.26da1dca.chunk.js",
+    "static/js/455.4bb2b78c.chunk.js": "/static/js/455.4bb2b78c.chunk.js",
+    "static/media/Que Necesitas - Logo para web y Favicon.png": "/static/media/Que Necesitas - Logo para web y Favicon.a651de74e7bde161b0e5.png",
+    "static/media/logo-principal-negativo.svg": "/static/media/logo-principal-negativo.86fa314ffe5f9dd71a9a3f1cef416738.svg",
+    "index.html": "/index.html",
+    "static/media/isotipo.svg": "/static/media/isotipo.bc84cfdd595646ec60dddc886b449e71.svg",
+    "main.e6c13ad2.css.map": "/static/css/main.e6c13ad2.css.map",
+    "main.b99a14f8.js.map": "/static/js/main.b99a14f8.js.map",
+    "389.dd35fef0.chunk.js.map": "/static/js/389.dd35fef0.chunk.js.map",
+    "105.660c0903.chunk.js.map": "/static/js/105.660c0903.chunk.js.map",
+    "453.e5a36781.chunk.js.map": "/static/js/453.e5a36781.chunk.js.map",
+    "239.ccaa22b2.chunk.js.map": "/static/js/239.ccaa22b2.chunk.js.map",
+    "977.26da1dca.chunk.js.map": "/static/js/977.26da1dca.chunk.js.map",
+    "455.4bb2b78c.chunk.js.map": "/static/js/455.4bb2b78c.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.b99a14f8.js"
+  ]
+}
